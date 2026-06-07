@@ -5,9 +5,12 @@ const fields = {
   customCourse: document.getElementById("customCourse"),
   courseHours: document.getElementById("courseHours"),
   completionDate: document.getElementById("completionDate"),
-  instructorName: document.getElementById("instructorName"),
-  instructorRole: document.getElementById("instructorRole"),
   programContent: document.getElementById("programContent"),
+};
+
+const companyInstructor = {
+  name: "Leandro Marques Gonçalves Martins",
+  role: "Número de Registro: 0042783/PA",
 };
 
 const output = {
@@ -306,16 +309,14 @@ function updatePreview() {
   const course = currentCourse();
   const hours = fields.courseHours.value.trim() || "-";
   const date = formatDate(fields.completionDate.value);
-  const instructor = fields.instructorName.value.trim() || "Leandro Marques Gon\u00e7alves Martins";
-  const instructorRole = fields.instructorRole.value.trim() || "N\u00famero de Registro: 0042783/PA";
   const data = {
     studentName: plainValue(studentName),
     studentDoc: plainValue(studentDoc),
     course: plainValue(course),
     hours: plainValue(hours),
     date,
-    instructor: plainValue(instructor),
-    instructorRole: plainValue(instructorRole),
+    instructor: companyInstructor.name,
+    instructorRole: companyInstructor.role,
     cpfComplete: cpfInfo.complete,
     cpfValid: cpfInfo.valid,
   };
@@ -333,13 +334,35 @@ function updatePreview() {
 }
 
 async function renderPage(element) {
-  return html2canvas(element, {
-    backgroundColor: "#ffffff",
-    scale: 2,
-    useCORS: true,
-    windowWidth: element.scrollWidth,
-    windowHeight: element.scrollHeight,
-  });
+  const exportWidth = 1122;
+  const exportHeight = 794;
+  const sandbox = document.createElement("div");
+  const clone = element.cloneNode(true);
+
+  sandbox.className = "export-sandbox";
+  clone.classList.add("exporting");
+  sandbox.appendChild(clone);
+  document.body.appendChild(sandbox);
+
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
+  try {
+    return await html2canvas(clone, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      width: exportWidth,
+      height: exportHeight,
+      windowWidth: exportWidth,
+      windowHeight: exportHeight,
+      scrollX: 0,
+      scrollY: 0,
+    });
+  } finally {
+    sandbox.remove();
+  }
 }
 
 function filenameSuffix() {
@@ -408,8 +431,6 @@ fields.studentDoc.addEventListener("input", () => {
   fields.customCourse,
   fields.courseHours,
   fields.completionDate,
-  fields.instructorName,
-  fields.instructorRole,
   fields.programContent,
 ].forEach((field) => {
   field.addEventListener("input", updatePreview);
