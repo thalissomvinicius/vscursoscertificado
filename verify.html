@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Verificação de Certificado - VS Cursos</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer>
+      window.addEventListener("DOMContentLoaded", () => {
+        const params = new URLSearchParams(window.location.search);
+        const value = (key, fallback = "-") => params.get(key) || fallback;
+        const fields = {
+          codigo: value("codigo", "VS-000000"),
+          aluno: value("aluno"),
+          cpf: value("cpf"),
+          curso: value("curso"),
+          carga: value("carga"),
+          conclusao: value("conclusao"),
+          instrutor: value("instrutor"),
+          registro: value("registro"),
+        };
+
+        Object.entries(fields).forEach(([key, content]) => {
+          const element = document.querySelector(`[data-field="${key}"]`);
+          if (element) element.textContent = content;
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <main class="verify-page">
+      <section class="verify-card">
+        <div class="verify-logo vs-logo">
+          <span>VS</span>
+          <small>CURSOS</small>
+          <i></i>
+          <em>Valorização Profissional</em>
+        </div>
+        <div class="verify-heading">
+          <span class="verify-status">Certificado localizado</span>
+          <h1>Verificação de certificado</h1>
+          <p>Confira abaixo os dados vinculados ao QR Code emitido pela VS Cursos.</p>
+        </div>
+
+        <div class="verify-grid">
+          <div>
+            <strong>Código</strong>
+            <span data-field="codigo">VS-000000</span>
+          </div>
+          <div>
+            <strong>Aluno</strong>
+            <span data-field="aluno">-</span>
+          </div>
+          <div>
+            <strong>CPF</strong>
+            <span data-field="cpf">-</span>
+          </div>
+          <div>
+            <strong>Curso</strong>
+            <span data-field="curso">-</span>
+          </div>
+          <div>
+            <strong>Carga horária</strong>
+            <span data-field="carga">-</span>
+          </div>
+          <div>
+            <strong>Conclusão</strong>
+            <span data-field="conclusao">-</span>
+          </div>
+          <div>
+            <strong>Instrutor</strong>
+            <span data-field="instrutor">-</span>
+          </div>
+          <div>
+            <strong>Registro</strong>
+            <span data-field="registro">-</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

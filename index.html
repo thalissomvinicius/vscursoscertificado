@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VS Cursos - Gerador de Certificados</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="html2canvas.min.js"></script>
+    <script defer src="jspdf.umd.min.js"></script>
+    <script defer src="qrcode.min.js"></script>
+    <script defer src="script.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <aside class="panel">
+          <div class="brand-card">
+            <div class="vs-logo" aria-label="VS Cursos">
+              <span class="vs">VS</span>
+              <span class="courses">CURSOS</span>
+              <span class="rule"></span>
+              <span class="tagline">Valorização Profissional</span>
+            </div>
+            <p>CNPJ: 60.953.721/0001-48</p>
+          </div>
+
+          <form id="certificateForm" class="form-grid">
+            <label>
+              Nome do aluno
+              <input id="studentName" type="text" value="Nome completo do aluno" />
+            </label>
+
+            <label>
+              CPF / documento
+              <input id="studentDoc" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" />
+              <small id="cpfStatus" class="field-status">Digite um CPF válido.</small>
+            </label>
+
+            <label>
+              Curso
+              <select id="courseSelect">
+                <option value="nr12">NR 12 - Segurança no Trabalho em Máquinas e Equipamentos</option>
+                <option value="nr35">NR 35 - Trabalho em Altura</option>
+                <option value="betoneira">Operador de Betoneira</option>
+                <option value="mecanico-industrial">Mecânico Industrial</option>
+                <option value="custom">Outro curso</option>
+              </select>
+            </label>
+
+            <label id="customCourseWrap" class="hidden">
+              Nome do curso
+              <input id="customCourse" type="text" placeholder="Digite o nome do curso" />
+            </label>
+
+            <div class="two-col">
+              <label>
+                Carga horária
+                <input id="courseHours" type="text" value="8 horas" />
+              </label>
+              <label>
+                Data de conclusão
+                <input id="completionDate" type="date" />
+              </label>
+            </div>
+
+            <label>
+              Nome do instrutor
+              <input id="instructorName" type="text" value="Leandro Marques Gonçalves Martins" />
+            </label>
+
+            <label>
+              Registro / qualificação do instrutor
+              <input id="instructorRole" type="text" value="Número de Registro: 0042783/PA" />
+            </label>
+
+            <label>
+              Conteúdo programático
+              <textarea id="programContent" rows="8" placeholder="Digite aqui o conteúdo programático do curso, um tópico por linha."></textarea>
+            </label>
+
+            <div class="actions">
+              <button type="button" id="downloadPdf">Baixar PDF</button>
+              <button type="button" id="downloadFront">Imagem frente</button>
+              <button type="button" id="downloadBack">Imagem verso</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="preview-zone" aria-label="Prévia do certificado">
+          <div class="preview-toolbar">
+            <div>
+              <strong>Prévia do certificado</strong>
+              <span>Formato paisagem, frente e verso</span>
+            </div>
+          </div>
+
+          <article id="frontPage" class="certificate page-front">
+            <header class="cert-header">
+              <div class="certificate-logo">
+                <span>VS</span>
+                <small>CURSOS</small>
+                <i></i>
+                <em>Valorização Profissional</em>
+              </div>
+            </header>
+
+            <div class="cert-body">
+              <p class="eyebrow">Certificado de conclusão</p>
+              <h1 id="frontStudent">Nome completo do aluno</h1>
+              <p class="statement">
+                Certificamos que o(a) aluno(a) acima, CPF <strong id="frontCpfText">-</strong>,
+                concluiu com sucesso o curso
+                <strong id="frontCourse">NR 12 - Segurança no Trabalho em Máquinas e Equipamentos</strong>,
+                com carga horária de <strong id="frontHours">8 horas</strong>, no período de
+                <strong id="frontPeriod">07/06/2026</strong>.
+              </p>
+            </div>
+
+            <footer class="signature-row">
+              <div class="signature">
+                <span></span>
+                <strong>Assinatura do Instrutor</strong>
+              </div>
+              <div class="signature">
+                <span></span>
+                <strong>Assinatura do Aluno</strong>
+              </div>
+            </footer>
+          </article>
+
+          <article id="backPage" class="certificate page-back">
+            <header class="back-header">
+              <div>
+                <p class="eyebrow">Verso do certificado</p>
+                <h2>Conteúdo programático</h2>
+              </div>
+              <div class="certificate-logo compact">
+                <span>VS</span>
+                <small>CURSOS</small>
+                <i></i>
+                <em>Valorização Profissional</em>
+              </div>
+            </header>
+
+            <section class="program-box">
+              <ul id="backProgram">
+                <li data-number="01"><span>Conteúdo programático a ser preenchido</span></li>
+              </ul>
+            </section>
+
+            <section class="verification-box">
+              <div id="qrCode" class="qr-code" aria-label="QR Code de verificação"></div>
+              <div>
+                <strong>Verificação de validade</strong>
+                <span id="verificationCode">VS-000000</span>
+                <small>Aponte a câmera para consultar a autenticidade.</small>
+              </div>
+            </section>
+
+            <footer class="legal">
+              <span>VS CURSOS - CNPJ 60.953.721/0001-48</span>
+              <span>Certificado emitido conforme informações preenchidas pela empresa.</span>
+            </footer>
+          </article>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
