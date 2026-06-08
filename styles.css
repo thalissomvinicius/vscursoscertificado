@@ -7,6 +7,9 @@
   --paper: #ffffff;
   --panel: #f8fafc;
   --accent: #6b7a91;
+  --certificate-width: 1122px;
+  --certificate-height: 794px;
+  --preview-scale: 1;
 }
 
 * {
@@ -264,6 +267,7 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   min-height: 58px;
   border: 1px solid #dbe3ef;
   border-radius: 8px;
@@ -280,15 +284,29 @@ textarea:focus {
 
 .certificate {
   position: relative;
-  width: 1122px;
-  min-width: 1122px;
-  height: 794px;
+  width: var(--certificate-width);
+  min-width: var(--certificate-width);
+  height: var(--certificate-height);
   aspect-ratio: auto;
   margin: 0 auto;
   overflow: hidden;
   border: 1px solid #d1d8e6;
   background: var(--paper);
   box-shadow: 0 22px 60px rgba(15, 23, 42, 0.16);
+}
+
+.certificate-frame {
+  position: relative;
+  justify-self: center;
+  width: calc(var(--certificate-width) * var(--preview-scale));
+  height: calc(var(--certificate-height) * var(--preview-scale));
+  margin: 0 auto;
+}
+
+.certificate-frame > .certificate {
+  margin: 0;
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
 }
 
 .export-sandbox {
@@ -570,14 +588,14 @@ h1 {
   bottom: 11%;
   z-index: 1;
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 88px 1fr;
   align-items: center;
-  gap: 10px;
-  width: 24%;
-  min-height: 102px;
+  gap: 12px;
+  width: 27%;
+  min-height: 118px;
   border: 1px solid #dbe3ef;
   border-radius: 6px;
-  padding: 9px 10px;
+  padding: 10px 12px;
   background: #fff;
   overflow: hidden;
   text-align: left;
@@ -586,8 +604,8 @@ h1 {
 .qr-code {
   display: grid;
   place-items: center;
-  width: 72px;
-  height: 72px;
+  width: 88px;
+  height: 88px;
   padding: 3px;
   border: 1px solid #e2e8f0;
   background: #fff;
@@ -595,8 +613,14 @@ h1 {
 
 .qr-code img,
 .qr-code canvas {
-  width: 66px !important;
-  height: 66px !important;
+  width: 82px !important;
+  height: 82px !important;
+}
+
+.qr-placeholder {
+  color: var(--blue-dark);
+  font-size: 18px;
+  font-weight: 900;
 }
 
 .verification-box strong {
@@ -761,6 +785,10 @@ h1 {
   .two-col {
     grid-template-columns: 1fr;
   }
+
+  .certificate-frame {
+    justify-self: start;
+  }
 }
 
 @media print {
@@ -780,6 +808,16 @@ h1 {
   .workspace,
   .preview-zone {
     display: block;
+  }
+
+  .certificate-frame {
+    width: auto;
+    height: auto;
+    margin: 0;
+  }
+
+  .certificate-frame > .certificate {
+    transform: none;
   }
 
   .certificate {

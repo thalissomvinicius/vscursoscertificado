@@ -25,6 +25,11 @@ const output = {
   qrCode: document.getElementById("qrCode"),
 };
 
+const certificateSize = {
+  width: 1122,
+  height: 794,
+};
+
 const today = new Date();
 fields.completionDate.valueAsDate = today;
 
@@ -193,12 +198,23 @@ function fitStudentName() {
   }
 }
 
+function updatePreviewScale() {
+  const preview = document.querySelector(".preview-zone");
+  if (!preview) return;
+
+  const availableWidth = preview.clientWidth || window.innerWidth;
+  const fitScale = Math.min(1, availableWidth / certificateSize.width);
+  const readableScale = window.innerWidth <= 680 ? 0.62 : window.innerWidth <= 980 ? 0.66 : 0;
+  const scale = Math.min(1, Math.max(fitScale, readableScale));
+  preview.style.setProperty("--preview-scale", scale.toFixed(3));
+}
+
 function plainValue(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
-async function createVerificationCode(data) {
-  const base = [
+function verificationBase(data) {
+  return [
     "VS CURSOS",
     "60.953.721/0001-48",
     data.studentName,
@@ -208,6 +224,23 @@ async function createVerificationCode(data) {
     data.date,
     data.instructor,
   ].join("|");
+}
+
+function fallbackHash(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0).toString(16).padStart(10, "0").slice(0, 10).toUpperCase();
+}
+
+async function createVerificationCode(data) {
+  const base = verificationBase(data);
+  if (!window.crypto?.subtle) {
+    return `VS-${fallbackHash(base)}`;
+  }
+
   const bytes = new TextEncoder().encode(base);
   const hash = await crypto.subtle.digest("SHA-256", bytes);
   const hex = Array.from(new Uint8Array(hash))
@@ -232,27 +265,53 @@ function verificationUrl(code, data) {
   return `${window.location.origin}${window.location.pathname.replace(/index\.html$/, "")}verify.html?${params}`;
 }
 
-let verificationRun = 0;
+function renderQrCode(text) {
+  output.qrCode.innerHTML = "";
 
-async function updateVerification(data) {
-  if (!data.cpfValid) {
-    output.verificationCode.textContent = data.cpfComplete ? "CPF INVÁLIDO" : "AGUARDANDO CPF";
-    output.qrCode.innerHTML = "";
+  if (!window.QRCode) {
+    const placeholder = document.createElement("span");
+    placeholder.className = "qr-placeholder";
+    placeholder.textContent = "QR";
+    output.qrCode.appendChild(placeholder);
     return;
   }
 
-  if (!window.crypto?.subtle || !window.QRCode) return;
+  const holder = document.createElement("div");
+  new QRCode(holder, {
+    text,
+    width: 180,
+    height: 180,
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+
+  const sourceImage = holder.querySelector("img");
+  const sourceCanvas = holder.querySelector("canvas");
+  const imageSource = sourceImage?.src || sourceCanvas?.toDataURL("image/png");
+
+  if (!imageSource) return;
+
+  const image = document.createElement("img");
+  image.src = imageSource;
+  image.alt = "QR Code de verificação";
+  output.qrCode.appendChild(image);
+}
+
+let verificationRun = 0;
+
+async function updateVerification(data) {
   const run = ++verificationRun;
+
+  if (!data.cpfValid) {
+    const pendingCode = data.cpfComplete ? "CPF INVÁLIDO" : "AGUARDANDO CPF";
+    output.verificationCode.textContent = pendingCode;
+    renderQrCode(verificationUrl(pendingCode, data));
+    return;
+  }
+
   const code = await createVerificationCode(data);
   if (run !== verificationRun) return;
   output.verificationCode.textContent = code;
-  output.qrCode.innerHTML = "";
-  new QRCode(output.qrCode, {
-    text: verificationUrl(code, data),
-    width: 82,
-    height: 82,
-    correctLevel: QRCode.CorrectLevel.M,
-  });
+  renderQrCode(verificationUrl(code, data));
 }
 
 function onlyDigits(value) {
@@ -330,13 +389,13 @@ function updatePreview() {
   output.frontPeriod.textContent = date;
   fillProgramList(fields.programContent.value);
   fitStudentName();
-  updateVerification(data);
+  updatePreviewScale();
+  return updateVerification(data);
 }
 
 async function renderPage(element) {
-  const sourceRect = element.getBoundingClientRect();
-  const exportWidth = Math.round(sourceRect.width);
-  const exportHeight = Math.round(sourceRect.height);
+  const exportWidth = Math.round(element.offsetWidth || certificateSize.width);
+  const exportHeight = Math.round(element.offsetHeight || certificateSize.height);
   const sandbox = document.createElement("div");
   const clone = element.cloneNode(true);
 
@@ -380,7 +439,7 @@ function filenameSuffix() {
 }
 
 async function downloadImage(pageId, name) {
-  updatePreview();
+  await updatePreview();
   if (!cpfState().valid) {
     alert("Informe um CPF válido antes de exportar o certificado.");
     fields.studentDoc.focus();
@@ -400,7 +459,7 @@ async function downloadImage(pageId, name) {
 
 async function downloadPdf() {
   const pdfWindow = window.open("", "_blank");
-  updatePreview();
+  await updatePreview();
   if (!cpfState().valid) {
     if (pdfWindow) pdfWindow.close();
     alert("Informe um CPF válido antes de exportar o certificado.");
@@ -461,6 +520,16 @@ fields.studentDoc.addEventListener("input", () => {
   field.addEventListener("change", updatePreview);
 });
 
-window.addEventListener("resize", fitStudentName);
+window.addEventListener("resize", () => {
+  fitStudentName();
+  updatePreviewScale();
+});
+
+if (window.ResizeObserver) {
+  const previewZone = document.querySelector(".preview-zone");
+  if (previewZone) {
+    new ResizeObserver(updatePreviewScale).observe(previewZone);
+  }
+}
 
 applyCoursePreset();
