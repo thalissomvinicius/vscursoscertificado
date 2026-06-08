@@ -438,6 +438,10 @@ async function downloadPdf() {
 document.getElementById("downloadPdf").addEventListener("click", downloadPdf);
 document.getElementById("downloadFront").addEventListener("click", () => downloadImage("frontPage", "frente"));
 document.getElementById("downloadBack").addEventListener("click", () => downloadImage("backPage", "verso"));
+document.getElementById("logoutButton").addEventListener("click", () => {
+  sessionStorage.removeItem("vsCursosAuth");
+  window.location.replace("login.html");
+});
 
 fields.courseSelect.addEventListener("change", applyCoursePreset);
 

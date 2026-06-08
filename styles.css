@@ -193,13 +193,62 @@ textarea:focus {
 }
 
 .actions button:nth-child(2),
-.actions button:nth-child(3) {
+.actions button:nth-child(3),
+.actions .secondary-action {
   color: var(--blue-dark);
   background: #e9efff;
 }
 
 .actions button:hover {
   filter: brightness(0.96);
+}
+
+.actions .secondary-action {
+  color: #475569;
+  background: #eef2f7;
+}
+
+.login-page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 22px;
+}
+
+.login-card {
+  width: min(430px, 100%);
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  padding: 30px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+}
+
+.login-logo {
+  margin-bottom: 24px;
+}
+
+.login-form {
+  display: grid;
+  gap: 14px;
+}
+
+.login-form button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  background: var(--blue);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.login-error {
+  min-height: 18px;
+  margin: 0;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .preview-zone {

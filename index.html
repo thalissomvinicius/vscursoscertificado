@@ -6,6 +6,11 @@
     <title>VS Cursos - Gerador de Certificados</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
+    <script>
+      if (sessionStorage.getItem("vsCursosAuth") !== "ok") {
+        window.location.replace("login.html");
+      }
+    </script>
     <script defer src="html2canvas.min.js"></script>
     <script defer src="jspdf.umd.min.js"></script>
     <script defer src="qrcode.min.js"></script>
@@ -73,6 +78,7 @@
               <button type="button" id="downloadPdf">Abrir PDF</button>
               <button type="button" id="downloadFront">Imagem frente</button>
               <button type="button" id="downloadBack">Imagem verso</button>
+              <button type="button" id="logoutButton" class="secondary-action">Sair</button>
             </div>
           </form>
         </aside>

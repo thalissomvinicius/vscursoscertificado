@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - VS Cursos</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="login-page">
+      <section class="login-card">
+        <div class="vs-logo login-logo" aria-label="VS Cursos">
+          <span class="vs">VS</span>
+          <span class="courses">CURSOS</span>
+          <span class="rule"></span>
+          <span class="tagline">Valorização Profissional</span>
+        </div>
+
+        <form id="loginForm" class="login-form">
+          <label>
+            Usuário
+            <input id="loginUser" type="text" autocomplete="username" autofocus />
+          </label>
+
+          <label>
+            Senha
+            <input id="loginPassword" type="password" autocomplete="current-password" />
+          </label>
+
+          <p id="loginError" class="login-error" role="alert"></p>
+          <button type="submit">Entrar</button>
+        </form>
+      </section>
+    </main>
+
+    <script>
+      const loginForm = document.getElementById("loginForm");
+      const loginError = document.getElementById("loginError");
+
+      if (sessionStorage.getItem("vsCursosAuth") === "ok") {
+        window.location.replace("index.html");
+      }
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const user = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPassword").value;
+
+        if (user === "vscursos" && password === "vs123") {
+          sessionStorage.setItem("vsCursosAuth", "ok");
+          window.location.replace("index.html");
+          return;
+        }
+
+        loginError.textContent = "Usuário ou senha inválidos.";
+      });
+    </script>
+  </body>
+</html>
