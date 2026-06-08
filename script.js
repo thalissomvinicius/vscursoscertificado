@@ -188,11 +188,11 @@ function fillProgramList(text) {
 
 function fitStudentName() {
   const element = output.frontStudent;
-  element.style.fontSize = "64px";
+  element.style.fontSize = "76px";
   element.style.whiteSpace = "nowrap";
 
-  let size = 64;
-  while (element.scrollWidth > element.clientWidth && size > 31) {
+  let size = 76;
+  while (element.scrollWidth > element.clientWidth && size > 34) {
     size -= 1;
     element.style.fontSize = `${size}px`;
   }

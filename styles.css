@@ -437,8 +437,8 @@ textarea:focus {
   z-index: 1;
   display: grid;
   justify-items: center;
-  gap: 28px;
-  padding: 58px 92px 0;
+  gap: 24px;
+  padding: 50px 78px 0;
   text-align: center;
 }
 
@@ -452,7 +452,7 @@ textarea:focus {
 .eyebrow {
   margin: 0;
   color: var(--blue);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
   letter-spacing: 3px;
   text-transform: uppercase;
@@ -464,7 +464,7 @@ h1 {
   max-width: 950px;
   color: #172033;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 64px;
+  font-size: 76px;
   font-weight: 700;
   line-height: 1.04;
   white-space: nowrap;
@@ -473,11 +473,11 @@ h1 {
 }
 
 .statement {
-  max-width: 930px;
+  max-width: 980px;
   margin: 0;
   color: #334155;
-  font-size: 24px;
-  line-height: 1.48;
+  font-size: 28px;
+  line-height: 1.42;
 }
 
 .statement strong {
@@ -508,7 +508,7 @@ h1 {
 }
 
 .signature strong {
-  font-size: 15px;
+  font-size: 18px;
 }
 
 .signature small {
@@ -525,7 +525,7 @@ h1 {
 
 .back-header h2 {
   margin: 8px 0 0;
-  font-size: 31px;
+  font-size: 36px;
   line-height: 1.05;
 }
 
@@ -533,13 +533,13 @@ h1 {
   position: absolute;
   left: 58px;
   right: 58px;
-  top: 23%;
-  bottom: 40%;
+  top: 24%;
+  bottom: 37%;
   z-index: 1;
   height: auto;
   border: 1px solid #dbe3ef;
   border-radius: 6px;
-  padding: 12px 24px;
+  padding: 14px 26px;
   background: rgba(248, 250, 252, 0.86);
   overflow: hidden;
 }
@@ -554,16 +554,16 @@ h1 {
   margin: 0;
   padding: 0;
   color: #263246;
-  font-size: 11.4px;
-  line-height: 1.12;
+  font-size: 14.2px;
+  line-height: 1.16;
 }
 
 .program-box li {
   display: grid;
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 42px 1fr;
   align-items: end;
-  min-height: 17px;
-  gap: 9px;
+  min-height: 24px;
+  gap: 10px;
   overflow: hidden;
 }
 
