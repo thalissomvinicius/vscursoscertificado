@@ -241,8 +241,8 @@ textarea:focus {
   position: fixed;
   left: -200vw;
   top: 0;
-  width: 1122px;
-  height: 794px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
   background: #fff;
   pointer-events: none;
@@ -250,8 +250,8 @@ textarea:focus {
 }
 
 .certificate.exporting {
-  width: 1122px !important;
-  height: 794px !important;
+  width: 100% !important;
+  height: 100% !important;
   min-width: 0 !important;
   aspect-ratio: auto !important;
   margin: 0 !important;

@@ -334,13 +334,18 @@ function updatePreview() {
 }
 
 async function renderPage(element) {
-  const exportWidth = 1122;
-  const exportHeight = 794;
+  const sourceRect = element.getBoundingClientRect();
+  const exportWidth = Math.round(sourceRect.width);
+  const exportHeight = Math.round(sourceRect.height);
   const sandbox = document.createElement("div");
   const clone = element.cloneNode(true);
 
   sandbox.className = "export-sandbox";
+  sandbox.style.width = `${exportWidth}px`;
+  sandbox.style.height = `${exportHeight}px`;
   clone.classList.add("exporting");
+  clone.style.width = `${exportWidth}px`;
+  clone.style.height = `${exportHeight}px`;
   sandbox.appendChild(clone);
   document.body.appendChild(sandbox);
 
@@ -351,7 +356,7 @@ async function renderPage(element) {
   try {
     return await html2canvas(clone, {
       backgroundColor: "#ffffff",
-      scale: 2,
+      scale: 3,
       useCORS: true,
       width: exportWidth,
       height: exportHeight,
@@ -394,13 +399,16 @@ async function downloadImage(pageId, name) {
 }
 
 async function downloadPdf() {
+  const pdfWindow = window.open("", "_blank");
   updatePreview();
   if (!cpfState().valid) {
+    if (pdfWindow) pdfWindow.close();
     alert("Informe um CPF válido antes de exportar o certificado.");
     fields.studentDoc.focus();
     return;
   }
   if (!window.html2canvas || !window.jspdf) {
+    if (pdfWindow) pdfWindow.close();
     alert("As bibliotecas de PDF/imagem ainda não carregaram. Recarregue a página e tente novamente.");
     return;
   }
@@ -412,7 +420,19 @@ async function downloadPdf() {
   pdf.addImage(frontCanvas.toDataURL("image/png"), "PNG", 0, 0, 297, 210);
   pdf.addPage("a4", "landscape");
   pdf.addImage(backCanvas.toDataURL("image/png"), "PNG", 0, 0, 297, 210);
-  pdf.save(`certificado-vs-cursos-${filenameSuffix()}.pdf`);
+
+  const pdfBlob = pdf.output("blob");
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+
+  if (pdfWindow) {
+    pdfWindow.location.href = pdfUrl;
+  } else {
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.click();
+  }
 }
 
 document.getElementById("downloadPdf").addEventListener("click", downloadPdf);
