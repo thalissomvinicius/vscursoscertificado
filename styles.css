@@ -255,6 +255,9 @@ textarea:focus {
   display: grid;
   gap: 18px;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 12px;
 }
 
 .preview-toolbar {
@@ -277,8 +280,10 @@ textarea:focus {
 
 .certificate {
   position: relative;
-  width: min(100%, 1122px);
-  aspect-ratio: 297 / 210;
+  width: 1122px;
+  min-width: 1122px;
+  height: 794px;
+  aspect-ratio: auto;
   margin: 0 auto;
   overflow: hidden;
   border: 1px solid #d1d8e6;
@@ -559,54 +564,6 @@ h1 {
   padding-bottom: 4px;
 }
 
-.meta-grid {
-  position: absolute;
-  left: 58px;
-  right: 32%;
-  bottom: 24%;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin: 0;
-}
-
-.meta-grid div,
-.notes-box {
-  border: 1px solid #dbe3ef;
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.meta-grid strong,
-.notes-box strong {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--blue-dark);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.meta-grid span,
-.notes-box p {
-  margin: 0;
-  color: #334155;
-  font-size: 11px;
-  line-height: 1.22;
-}
-
-.notes-box {
-  position: absolute;
-  left: 58px;
-  right: 32%;
-  bottom: 11%;
-  z-index: 1;
-  min-height: 58px;
-  margin: 0;
-}
-
 .verification-box {
   position: absolute;
   right: 58px;
@@ -801,20 +758,8 @@ h1 {
 }
 
 @media (max-width: 680px) {
-  .two-col,
-  .info-strip,
-  .meta-grid,
-  .signature-row {
+  .two-col {
     grid-template-columns: 1fr;
-  }
-
-  .certificate {
-    min-width: 760px;
-  }
-
-  .preview-zone {
-    overflow-x: auto;
-    padding-bottom: 12px;
   }
 }
 
