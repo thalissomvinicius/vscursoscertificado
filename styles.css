@@ -437,7 +437,7 @@ textarea:focus {
   z-index: 1;
   display: grid;
   justify-items: center;
-  gap: 22px;
+  gap: 30px;
   padding: 42px 64px 0;
   text-align: center;
 }
