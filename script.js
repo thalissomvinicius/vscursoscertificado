@@ -11,6 +11,16 @@ const fields = {
   signatureMode: document.getElementById("signatureMode"),
   instructorSignatureUpload: document.getElementById("instructorSignatureUpload"),
   studentSignatureUpload: document.getElementById("studentSignatureUpload"),
+  instructorSignatureWidth: document.getElementById("instructorSignatureWidth"),
+  instructorSignatureHeight: document.getElementById("instructorSignatureHeight"),
+  instructorSignatureX: document.getElementById("instructorSignatureX"),
+  instructorSignatureY: document.getElementById("instructorSignatureY"),
+  instructorSignatureReset: document.getElementById("instructorSignatureReset"),
+  studentSignatureWidth: document.getElementById("studentSignatureWidth"),
+  studentSignatureHeight: document.getElementById("studentSignatureHeight"),
+  studentSignatureX: document.getElementById("studentSignatureX"),
+  studentSignatureY: document.getElementById("studentSignatureY"),
+  studentSignatureReset: document.getElementById("studentSignatureReset"),
   programContent: document.getElementById("programContent"),
 };
 
@@ -33,10 +43,22 @@ const output = {
   signatureRow: document.getElementById("signatureRow"),
   instructorSignatureBlock: document.getElementById("instructorSignatureBlock"),
   studentSignatureBlock: document.getElementById("studentSignatureBlock"),
+  instructorSignatureBox: document.getElementById("instructorSignatureBox"),
+  studentSignatureBox: document.getElementById("studentSignatureBox"),
   instructorSignatureImage: document.getElementById("instructorSignatureImage"),
   studentSignatureImage: document.getElementById("studentSignatureImage"),
   instructorSignatureWrap: document.getElementById("instructorSignatureWrap"),
   studentSignatureWrap: document.getElementById("studentSignatureWrap"),
+  instructorSignatureAdjust: document.getElementById("instructorSignatureAdjust"),
+  studentSignatureAdjust: document.getElementById("studentSignatureAdjust"),
+  instructorSignatureWidthValue: document.getElementById("instructorSignatureWidthValue"),
+  instructorSignatureHeightValue: document.getElementById("instructorSignatureHeightValue"),
+  instructorSignatureXValue: document.getElementById("instructorSignatureXValue"),
+  instructorSignatureYValue: document.getElementById("instructorSignatureYValue"),
+  studentSignatureWidthValue: document.getElementById("studentSignatureWidthValue"),
+  studentSignatureHeightValue: document.getElementById("studentSignatureHeightValue"),
+  studentSignatureXValue: document.getElementById("studentSignatureXValue"),
+  studentSignatureYValue: document.getElementById("studentSignatureYValue"),
 };
 
 const certificateSize = {
@@ -53,6 +75,21 @@ const signatureImages = {
   instructor: "",
   student: "",
 };
+
+const defaultSignatureSettings = {
+  width: 300,
+  height: 90,
+  x: 0,
+  y: 0,
+};
+
+const signatureSettings = {
+  instructor: { ...defaultSignatureSettings },
+  student: { ...defaultSignatureSettings },
+};
+
+let activeSignatureKind = "";
+let signatureInteraction = null;
 
 const coursePresets = {
   nr12: {
@@ -188,18 +225,189 @@ function updateDateFields() {
   document.getElementById("periodDateWrap").classList.toggle("hidden", !isRange);
 }
 
+function signatureParts(kind) {
+  if (kind === "instructor") {
+    return {
+      box: output.instructorSignatureBox,
+      image: output.instructorSignatureImage,
+      adjust: output.instructorSignatureAdjust,
+      width: fields.instructorSignatureWidth,
+      height: fields.instructorSignatureHeight,
+      x: fields.instructorSignatureX,
+      y: fields.instructorSignatureY,
+      widthValue: output.instructorSignatureWidthValue,
+      heightValue: output.instructorSignatureHeightValue,
+      xValue: output.instructorSignatureXValue,
+      yValue: output.instructorSignatureYValue,
+    };
+  }
+
+  return {
+    box: output.studentSignatureBox,
+    image: output.studentSignatureImage,
+    adjust: output.studentSignatureAdjust,
+    width: fields.studentSignatureWidth,
+    height: fields.studentSignatureHeight,
+    x: fields.studentSignatureX,
+    y: fields.studentSignatureY,
+    widthValue: output.studentSignatureWidthValue,
+    heightValue: output.studentSignatureHeightValue,
+    xValue: output.studentSignatureXValue,
+    yValue: output.studentSignatureYValue,
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function clampSignatureValue(kind, key, value) {
+  const control = signatureParts(kind)[key];
+  return clamp(Math.round(value), Number(control.min), Number(control.max));
+}
+
+function previewScale() {
+  const preview = document.querySelector(".preview-zone");
+  const value = Number.parseFloat(getComputedStyle(preview).getPropertyValue("--preview-scale"));
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function selectSignature(kind) {
+  activeSignatureKind = kind;
+  output.instructorSignatureBox.classList.toggle("is-selected", kind === "instructor");
+  output.studentSignatureBox.classList.toggle("is-selected", kind === "student");
+}
+
+function syncSignatureControls(kind) {
+  const parts = signatureParts(kind);
+  const settings = signatureSettings[kind];
+
+  parts.width.value = settings.width;
+  parts.height.value = settings.height;
+  parts.x.value = settings.x;
+  parts.y.value = settings.y;
+  parts.widthValue.textContent = settings.width;
+  parts.heightValue.textContent = settings.height;
+  parts.xValue.textContent = settings.x;
+  parts.yValue.textContent = settings.y;
+}
+
+function applySignatureSettings(kind) {
+  const parts = signatureParts(kind);
+  const settings = signatureSettings[kind];
+
+  parts.box.style.setProperty("--signature-image-width", `${settings.width}px`);
+  parts.box.style.setProperty("--signature-image-height", `${settings.height}px`);
+  parts.box.style.setProperty("--signature-image-x", `${settings.x}px`);
+  parts.box.style.setProperty("--signature-image-y", `${settings.y}px`);
+  syncSignatureControls(kind);
+}
+
+function resetSignatureSettings(kind) {
+  signatureSettings[kind] = { ...defaultSignatureSettings };
+  applySignatureSettings(kind);
+}
+
+function updateSignatureSetting(kind, key, value) {
+  signatureSettings[kind][key] = Number(value);
+  selectSignature(kind);
+  applySignatureSettings(kind);
+}
+
+function updateSignatureFromDrag(state, event) {
+  const scale = previewScale();
+  const deltaX = (event.clientX - state.startClientX) / scale;
+  const deltaY = (event.clientY - state.startClientY) / scale;
+  const next = { ...state.start };
+
+  if (state.action === "move") {
+    next.x = clampSignatureValue(state.kind, "x", state.start.x + deltaX);
+    next.y = clampSignatureValue(state.kind, "y", state.start.y + deltaY);
+  } else {
+    const handle = state.handle;
+    const resizesLeft = handle.includes("w");
+    const resizesRight = handle.includes("e");
+    const resizesTop = handle.includes("n");
+    const resizesBottom = handle.includes("s");
+
+    if (resizesLeft || resizesRight) {
+      const rawWidth = resizesLeft ? state.start.width - deltaX : state.start.width + deltaX;
+      next.width = clampSignatureValue(state.kind, "width", rawWidth);
+      if (resizesLeft) {
+        next.x = clampSignatureValue(state.kind, "x", state.start.x + (state.start.width - next.width));
+      }
+    }
+
+    if (resizesTop || resizesBottom) {
+      const rawHeight = resizesTop ? state.start.height - deltaY : state.start.height + deltaY;
+      next.height = clampSignatureValue(state.kind, "height", rawHeight);
+      if (resizesTop) {
+        next.y = clampSignatureValue(state.kind, "y", state.start.y + (state.start.height - next.height));
+      }
+    }
+  }
+
+  signatureSettings[state.kind] = next;
+  applySignatureSettings(state.kind);
+}
+
+function setupSignatureDirectEditing(kind) {
+  const { box } = signatureParts(kind);
+
+  box.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+
+    const handle = event.target?.dataset?.resizeHandle || "";
+    selectSignature(kind);
+    event.preventDefault();
+    event.stopPropagation();
+
+    signatureInteraction = {
+      kind,
+      action: handle ? "resize" : "move",
+      handle,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      start: { ...signatureSettings[kind] },
+    };
+
+    box.classList.add("is-dragging");
+    box.setPointerCapture(event.pointerId);
+  });
+
+  box.addEventListener("pointermove", (event) => {
+    if (!signatureInteraction || signatureInteraction.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    updateSignatureFromDrag(signatureInteraction, event);
+  });
+
+  const endInteraction = (event) => {
+    if (!signatureInteraction || signatureInteraction.pointerId !== event.pointerId) return;
+    box.classList.remove("is-dragging");
+    if (box.hasPointerCapture(event.pointerId)) {
+      box.releasePointerCapture(event.pointerId);
+    }
+    signatureInteraction = null;
+  };
+
+  box.addEventListener("pointerup", endInteraction);
+  box.addEventListener("pointercancel", endInteraction);
+}
+
 function renderSignatureImage(kind) {
-  const image = kind === "instructor" ? output.instructorSignatureImage : output.studentSignatureImage;
+  const { box, image } = signatureParts(kind);
   const source = signatureImages[kind];
 
   if (!source) {
     image.removeAttribute("src");
-    image.classList.add("hidden");
+    box.classList.add("hidden");
     return;
   }
 
   image.src = source;
-  image.classList.remove("hidden");
+  box.classList.remove("hidden");
+  applySignatureSettings(kind);
 }
 
 function updateSignaturePreview() {
@@ -213,6 +421,8 @@ function updateSignaturePreview() {
   output.studentSignatureBlock.classList.toggle("hidden", !showStudent);
   output.instructorSignatureWrap.classList.toggle("hidden", !showInstructor);
   output.studentSignatureWrap.classList.toggle("hidden", !showStudent);
+  output.instructorSignatureAdjust.classList.toggle("hidden", !showInstructor || !signatureImages.instructor);
+  output.studentSignatureAdjust.classList.toggle("hidden", !showStudent || !signatureImages.student);
 
   renderSignatureImage("instructor");
   renderSignatureImage("student");
@@ -236,7 +446,9 @@ function readSignatureImage(kind, input) {
   const reader = new FileReader();
   reader.addEventListener("load", () => {
     signatureImages[kind] = String(reader.result || "");
+    resetSignatureSettings(kind);
     updateSignaturePreview();
+    selectSignature(kind);
   });
   reader.readAsDataURL(file);
 }
@@ -629,6 +841,25 @@ fields.instructorSignatureUpload.addEventListener("change", () => {
 fields.studentSignatureUpload.addEventListener("change", () => {
   readSignatureImage("student", fields.studentSignatureUpload);
 });
+
+[
+  { kind: "instructor", key: "width", control: fields.instructorSignatureWidth },
+  { kind: "instructor", key: "height", control: fields.instructorSignatureHeight },
+  { kind: "instructor", key: "x", control: fields.instructorSignatureX },
+  { kind: "instructor", key: "y", control: fields.instructorSignatureY },
+  { kind: "student", key: "width", control: fields.studentSignatureWidth },
+  { kind: "student", key: "height", control: fields.studentSignatureHeight },
+  { kind: "student", key: "x", control: fields.studentSignatureX },
+  { kind: "student", key: "y", control: fields.studentSignatureY },
+].forEach(({ kind, key, control }) => {
+  control.addEventListener("input", () => updateSignatureSetting(kind, key, control.value));
+});
+
+fields.instructorSignatureReset.addEventListener("click", () => resetSignatureSettings("instructor"));
+fields.studentSignatureReset.addEventListener("click", () => resetSignatureSettings("student"));
+
+setupSignatureDirectEditing("instructor");
+setupSignatureDirectEditing("student");
 
 window.addEventListener("resize", () => {
   fitStudentName();

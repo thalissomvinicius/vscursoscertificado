@@ -108,6 +108,54 @@
               </label>
             </div>
 
+            <div class="signature-adjustments">
+              <section id="instructorSignatureAdjust" class="signature-adjust-panel hidden">
+                <div class="adjust-heading">
+                  <strong>Ajuste da assinatura do instrutor</strong>
+                  <button type="button" id="instructorSignatureReset">Restaurar</button>
+                </div>
+                <label class="range-field">
+                  <span>Largura <output id="instructorSignatureWidthValue">300</output></span>
+                  <input id="instructorSignatureWidth" type="range" min="80" max="600" value="300" />
+                </label>
+                <label class="range-field">
+                  <span>Altura <output id="instructorSignatureHeightValue">90</output></span>
+                  <input id="instructorSignatureHeight" type="range" min="30" max="220" value="90" />
+                </label>
+                <label class="range-field">
+                  <span>Horizontal <output id="instructorSignatureXValue">0</output></span>
+                  <input id="instructorSignatureX" type="range" min="-260" max="260" value="0" />
+                </label>
+                <label class="range-field">
+                  <span>Vertical <output id="instructorSignatureYValue">0</output></span>
+                  <input id="instructorSignatureY" type="range" min="-150" max="150" value="0" />
+                </label>
+              </section>
+
+              <section id="studentSignatureAdjust" class="signature-adjust-panel hidden">
+                <div class="adjust-heading">
+                  <strong>Ajuste da assinatura do aluno</strong>
+                  <button type="button" id="studentSignatureReset">Restaurar</button>
+                </div>
+                <label class="range-field">
+                  <span>Largura <output id="studentSignatureWidthValue">300</output></span>
+                  <input id="studentSignatureWidth" type="range" min="80" max="600" value="300" />
+                </label>
+                <label class="range-field">
+                  <span>Altura <output id="studentSignatureHeightValue">90</output></span>
+                  <input id="studentSignatureHeight" type="range" min="30" max="220" value="90" />
+                </label>
+                <label class="range-field">
+                  <span>Horizontal <output id="studentSignatureXValue">0</output></span>
+                  <input id="studentSignatureX" type="range" min="-260" max="260" value="0" />
+                </label>
+                <label class="range-field">
+                  <span>Vertical <output id="studentSignatureYValue">0</output></span>
+                  <input id="studentSignatureY" type="range" min="-150" max="150" value="0" />
+                </label>
+              </section>
+            </div>
+
             <label>
               Conteúdo programático
               <textarea id="programContent" rows="8" placeholder="Digite aqui o conteúdo programático do curso, um tópico por linha."></textarea>
@@ -156,12 +204,24 @@
 
             <footer id="signatureRow" class="signature-row">
               <div id="instructorSignatureBlock" class="signature">
-                <img id="instructorSignatureImage" class="signature-image hidden" alt="Assinatura do instrutor" />
+                <div id="instructorSignatureBox" class="signature-image-box hidden">
+                  <img id="instructorSignatureImage" class="signature-image" alt="Assinatura do instrutor" />
+                  <span class="signature-handle top-left" data-resize-handle="nw"></span>
+                  <span class="signature-handle top-right" data-resize-handle="ne"></span>
+                  <span class="signature-handle bottom-left" data-resize-handle="sw"></span>
+                  <span class="signature-handle bottom-right" data-resize-handle="se"></span>
+                </div>
                 <span></span>
                 <strong>Assinatura do Instrutor</strong>
               </div>
               <div id="studentSignatureBlock" class="signature">
-                <img id="studentSignatureImage" class="signature-image hidden" alt="Assinatura do aluno" />
+                <div id="studentSignatureBox" class="signature-image-box hidden">
+                  <img id="studentSignatureImage" class="signature-image" alt="Assinatura do aluno" />
+                  <span class="signature-handle top-left" data-resize-handle="nw"></span>
+                  <span class="signature-handle top-right" data-resize-handle="ne"></span>
+                  <span class="signature-handle bottom-left" data-resize-handle="sw"></span>
+                  <span class="signature-handle bottom-right" data-resize-handle="se"></span>
+                </div>
                 <span></span>
                 <strong>Assinatura do Aluno</strong>
               </div>
