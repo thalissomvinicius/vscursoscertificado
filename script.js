@@ -3,8 +3,14 @@ const fields = {
   studentDoc: document.getElementById("studentDoc"),
   courseSelect: document.getElementById("courseSelect"),
   customCourse: document.getElementById("customCourse"),
+  dateMode: document.getElementById("dateMode"),
   courseHours: document.getElementById("courseHours"),
   completionDate: document.getElementById("completionDate"),
+  startDate: document.getElementById("startDate"),
+  endDate: document.getElementById("endDate"),
+  signatureMode: document.getElementById("signatureMode"),
+  instructorSignatureUpload: document.getElementById("instructorSignatureUpload"),
+  studentSignatureUpload: document.getElementById("studentSignatureUpload"),
   programContent: document.getElementById("programContent"),
 };
 
@@ -18,11 +24,19 @@ const output = {
   frontCpfText: document.getElementById("frontCpfText"),
   frontCourse: document.getElementById("frontCourse"),
   frontHours: document.getElementById("frontHours"),
+  frontPeriodLead: document.getElementById("frontPeriodLead"),
   frontPeriod: document.getElementById("frontPeriod"),
   cpfStatus: document.getElementById("cpfStatus"),
   backProgram: document.getElementById("backProgram"),
   verificationCode: document.getElementById("verificationCode"),
   qrCode: document.getElementById("qrCode"),
+  signatureRow: document.getElementById("signatureRow"),
+  instructorSignatureBlock: document.getElementById("instructorSignatureBlock"),
+  studentSignatureBlock: document.getElementById("studentSignatureBlock"),
+  instructorSignatureImage: document.getElementById("instructorSignatureImage"),
+  studentSignatureImage: document.getElementById("studentSignatureImage"),
+  instructorSignatureWrap: document.getElementById("instructorSignatureWrap"),
+  studentSignatureWrap: document.getElementById("studentSignatureWrap"),
 };
 
 const certificateSize = {
@@ -32,6 +46,13 @@ const certificateSize = {
 
 const today = new Date();
 fields.completionDate.valueAsDate = today;
+fields.startDate.valueAsDate = today;
+fields.endDate.valueAsDate = today;
+
+const signatureImages = {
+  instructor: "",
+  student: "",
+};
 
 const coursePresets = {
   nr12: {
@@ -147,6 +168,79 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+function currentDateInfo() {
+  if (fields.dateMode.value === "range") {
+    return {
+      lead: "realizado no período de",
+      value: `${formatDate(fields.startDate.value)} a ${formatDate(fields.endDate.value)}`,
+    };
+  }
+
+  return {
+    lead: "concluído em",
+    value: formatDate(fields.completionDate.value),
+  };
+}
+
+function updateDateFields() {
+  const isRange = fields.dateMode.value === "range";
+  document.getElementById("completionDateWrap").classList.toggle("hidden", isRange);
+  document.getElementById("periodDateWrap").classList.toggle("hidden", !isRange);
+}
+
+function renderSignatureImage(kind) {
+  const image = kind === "instructor" ? output.instructorSignatureImage : output.studentSignatureImage;
+  const source = signatureImages[kind];
+
+  if (!source) {
+    image.removeAttribute("src");
+    image.classList.add("hidden");
+    return;
+  }
+
+  image.src = source;
+  image.classList.remove("hidden");
+}
+
+function updateSignaturePreview() {
+  const mode = fields.signatureMode.value;
+  const showInstructor = mode === "both" || mode === "instructor";
+  const showStudent = mode === "both" || mode === "student";
+  const singleSignature = showInstructor !== showStudent;
+
+  output.signatureRow.classList.toggle("single", singleSignature);
+  output.instructorSignatureBlock.classList.toggle("hidden", !showInstructor);
+  output.studentSignatureBlock.classList.toggle("hidden", !showStudent);
+  output.instructorSignatureWrap.classList.toggle("hidden", !showInstructor);
+  output.studentSignatureWrap.classList.toggle("hidden", !showStudent);
+
+  renderSignatureImage("instructor");
+  renderSignatureImage("student");
+}
+
+function readSignatureImage(kind, input) {
+  const file = input.files?.[0];
+
+  if (!file) {
+    signatureImages[kind] = "";
+    updateSignaturePreview();
+    return;
+  }
+
+  if (!file.type.startsWith("image/")) {
+    alert("Selecione um arquivo de imagem para a assinatura.");
+    input.value = "";
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    signatureImages[kind] = String(reader.result || "");
+    updateSignaturePreview();
+  });
+  reader.readAsDataURL(file);
+}
+
 function currentCourse() {
   if (fields.courseSelect.value === "custom") {
     return fields.customCourse.value.trim() || "Curso personalizado";
@@ -258,6 +352,7 @@ function verificationUrl(code, data) {
     cpf: data.studentDoc,
     curso: data.course,
     carga: data.hours,
+    periodo: data.date,
     conclusao: data.date,
     instrutor: data.instructor,
     registro: data.instructorRole,
@@ -367,13 +462,13 @@ function updatePreview() {
   const studentDoc = fields.studentDoc.value.trim() || "-";
   const course = currentCourse();
   const hours = fields.courseHours.value.trim() || "-";
-  const date = formatDate(fields.completionDate.value);
+  const dateInfo = currentDateInfo();
   const data = {
     studentName: plainValue(studentName),
     studentDoc: plainValue(studentDoc),
     course: plainValue(course),
     hours: plainValue(hours),
-    date,
+    date: dateInfo.value,
     instructor: companyInstructor.name,
     instructorRole: companyInstructor.role,
     cpfComplete: cpfInfo.complete,
@@ -381,12 +476,15 @@ function updatePreview() {
   };
 
   document.getElementById("customCourseWrap").classList.toggle("hidden", fields.courseSelect.value !== "custom");
+  updateDateFields();
+  updateSignaturePreview();
 
   output.frontStudent.textContent = studentName;
   output.frontCpfText.textContent = studentDoc;
   output.frontCourse.textContent = course;
   output.frontHours.textContent = hours;
-  output.frontPeriod.textContent = date;
+  output.frontPeriodLead.textContent = dateInfo.lead;
+  output.frontPeriod.textContent = dateInfo.value;
   fillProgramList(fields.programContent.value);
   fitStudentName();
   updatePreviewScale();
@@ -512,12 +610,24 @@ fields.studentDoc.addEventListener("input", () => {
 [
   fields.studentName,
   fields.customCourse,
+  fields.dateMode,
   fields.courseHours,
   fields.completionDate,
+  fields.startDate,
+  fields.endDate,
+  fields.signatureMode,
   fields.programContent,
 ].forEach((field) => {
   field.addEventListener("input", updatePreview);
   field.addEventListener("change", updatePreview);
+});
+
+fields.instructorSignatureUpload.addEventListener("change", () => {
+  readSignatureImage("instructor", fields.instructorSignatureUpload);
+});
+
+fields.studentSignatureUpload.addEventListener("change", () => {
+  readSignatureImage("student", fields.studentSignatureUpload);
 });
 
 window.addEventListener("resize", () => {

@@ -495,11 +495,30 @@ h1 {
   gap: 100px;
 }
 
+.signature-row.single {
+  grid-template-columns: minmax(320px, 430px);
+  justify-content: center;
+  gap: 0;
+}
+
 .signature {
   display: grid;
   justify-items: center;
   gap: 5px;
   text-align: center;
+}
+
+.signature-image {
+  display: block;
+  width: min(270px, 78%);
+  height: 76px;
+  margin-bottom: -10px;
+  object-fit: contain;
+}
+
+.signature.hidden,
+.signature-image.hidden {
+  display: none;
 }
 
 .signature span {

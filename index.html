@@ -58,14 +58,53 @@
               <input id="customCourse" type="text" placeholder="Digite o nome do curso" />
             </label>
 
+            <label>
+              Como informar a data
+              <select id="dateMode">
+                <option value="completion">Data de conclusão</option>
+                <option value="range">Período com início e término</option>
+              </select>
+            </label>
+
             <div class="two-col">
               <label>
                 Carga horária
                 <input id="courseHours" type="text" value="8 horas" />
               </label>
-              <label>
+              <label id="completionDateWrap">
                 Data de conclusão
                 <input id="completionDate" type="date" />
+              </label>
+            </div>
+
+            <div id="periodDateWrap" class="two-col hidden">
+              <label>
+                Data de início
+                <input id="startDate" type="date" />
+              </label>
+              <label>
+                Data de término
+                <input id="endDate" type="date" />
+              </label>
+            </div>
+
+            <label>
+              Assinaturas no certificado
+              <select id="signatureMode">
+                <option value="both">Instrutor e aluno</option>
+                <option value="instructor">Somente instrutor</option>
+                <option value="student">Somente aluno</option>
+              </select>
+            </label>
+
+            <div class="two-col">
+              <label id="instructorSignatureWrap">
+                Imagem da assinatura do instrutor
+                <input id="instructorSignatureUpload" type="file" accept="image/*" />
+              </label>
+              <label id="studentSignatureWrap">
+                Imagem da assinatura do aluno
+                <input id="studentSignatureUpload" type="file" accept="image/*" />
               </label>
             </div>
 
@@ -109,17 +148,20 @@
                 Certificamos que o(a) aluno(a) acima, CPF <strong id="frontCpfText">-</strong>,
                 concluiu com sucesso o curso
                 <strong id="frontCourse">NR 12 - Segurança no Trabalho em Máquinas e Equipamentos</strong>,
-                com carga horária de <strong id="frontHours">8 horas</strong>, no período de
+                com carga horária de <strong id="frontHours">8 horas</strong>,
+                <span id="frontPeriodLead">concluído em</span>
                 <strong id="frontPeriod">07/06/2026</strong>.
               </p>
             </div>
 
-            <footer class="signature-row">
-              <div class="signature">
+            <footer id="signatureRow" class="signature-row">
+              <div id="instructorSignatureBlock" class="signature">
+                <img id="instructorSignatureImage" class="signature-image hidden" alt="Assinatura do instrutor" />
                 <span></span>
                 <strong>Assinatura do Instrutor</strong>
               </div>
-              <div class="signature">
+              <div id="studentSignatureBlock" class="signature">
+                <img id="studentSignatureImage" class="signature-image hidden" alt="Assinatura do aluno" />
                 <span></span>
                 <strong>Assinatura do Aluno</strong>
               </div>
