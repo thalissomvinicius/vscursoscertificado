@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>VS Cursos - Gerador de Certificados</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260709-2" />
     <script>
       if (sessionStorage.getItem("vsCursosAuth") !== "ok") {
         window.location.replace("login.html");
@@ -14,7 +14,7 @@
     <script defer src="html2canvas.min.js"></script>
     <script defer src="jspdf.umd.min.js"></script>
     <script defer src="qrcode.min.js"></script>
-    <script defer src="script.js"></script>
+    <script defer src="script.js?v=20260709-2"></script>
   </head>
   <body>
     <main class="app-shell">
@@ -50,6 +50,8 @@
               Curso
               <select id="courseSelect">
                 <option value="nr12">NR 12 - Segurança no Trabalho em Máquinas e Equipamentos</option>
+                <option value="nr18">NR 18 - Condições de Segurança e Saúde no Trabalho na Indústria da Construção</option>
+                <option value="nr33">NR 33 - Segurança e Saúde nos Trabalhos em Espaços Confinados</option>
                 <option value="nr35">NR 35 - Trabalho em Altura</option>
                 <option value="betoneira">Operador de Betoneira</option>
                 <option value="mecanico-industrial">Mecânico Industrial</option>
@@ -168,7 +170,7 @@
 
             <div class="actions">
               <small id="exportStatus" class="export-status">Preencha os dados obrigatórios para exportar.</small>
-              <button type="button" id="downloadPdf">Abrir PDF</button>
+              <button type="button" id="downloadPdf">Baixar PDF</button>
               <button type="button" id="downloadDataPdf">PDF dos dados</button>
               <button type="button" id="downloadFront">Imagem frente</button>
               <button type="button" id="downloadBack">Imagem verso</button>

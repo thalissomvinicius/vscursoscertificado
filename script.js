@@ -128,6 +128,55 @@ const coursePresets = {
       "No\u00e7\u00f5es de Primeiros Socorros",
     ],
   },
+  nr18: {
+    title: "NR 18 - Condi\u00e7\u00f5es de Seguran\u00e7a e Sa\u00fade no Trabalho na Ind\u00fastria da Constru\u00e7\u00e3o",
+    hours: "8 horas",
+    program: [
+      "Introdu\u00e7\u00e3o \u00e0 NR 18",
+      "Legisla\u00e7\u00e3o Aplic\u00e1vel \u00e0 Ind\u00fastria da Constru\u00e7\u00e3o",
+      "Responsabilidades do Empregador e do Trabalhador",
+      "Programa de Gerenciamento de Riscos (PGR)",
+      "Organiza\u00e7\u00e3o e Sinaliza\u00e7\u00e3o do Canteiro de Obras",
+      "\u00c1reas de Viv\u00eancia",
+      "Medidas de Prote\u00e7\u00e3o Coletiva",
+      "Equipamentos de Prote\u00e7\u00e3o Individual (EPI)",
+      "Trabalho em Altura na Constru\u00e7\u00e3o",
+      "Escadas, Rampas e Passarelas",
+      "Andaimes e Plataformas de Trabalho",
+      "Movimenta\u00e7\u00e3o e Transporte de Materiais",
+      "M\u00e1quinas, Equipamentos e Ferramentas",
+      "Instala\u00e7\u00f5es El\u00e9tricas Tempor\u00e1rias",
+      "Demoli\u00e7\u00e3o, Escava\u00e7\u00e3o e Funda\u00e7\u00f5es",
+      "Preven\u00e7\u00e3o e Combate a Inc\u00eandio",
+      "Ordem, Limpeza e Organiza\u00e7\u00e3o",
+      "Procedimentos de Emerg\u00eancia",
+      "No\u00e7\u00f5es de Primeiros Socorros",
+    ],
+  },
+  nr33: {
+    title: "NR 33 - Seguran\u00e7a e Sa\u00fade nos Trabalhos em Espa\u00e7os Confinados",
+    hours: "8 horas",
+    program: [
+      "Introdu\u00e7\u00e3o \u00e0 NR 33",
+      "Legisla\u00e7\u00e3o Aplic\u00e1vel a Espa\u00e7os Confinados",
+      "Responsabilidades do Empregador e do Trabalhador",
+      "Conceitos e Defini\u00e7\u00f5es de Espa\u00e7o Confinado",
+      "Reconhecimento, Avalia\u00e7\u00e3o e Controle de Riscos",
+      "Riscos Atmosf\u00e9ricos, F\u00edsicos, Qu\u00edmicos e Biol\u00f3gicos",
+      "Permiss\u00e3o de Entrada e Trabalho (PET)",
+      "Procedimentos de Entrada, Perman\u00eancia e Sa\u00edda",
+      "Monitoramento da Atmosfera",
+      "Ventila\u00e7\u00e3o e Controle de Contaminantes",
+      "Equipamentos de Prote\u00e7\u00e3o Individual e Coletiva",
+      "Sinaliza\u00e7\u00e3o e Isolamento da \u00c1rea",
+      "Comunica\u00e7\u00e3o entre Equipe, Vigia e Supervisor",
+      "Atribui\u00e7\u00f5es do Trabalhador Autorizado",
+      "Atribui\u00e7\u00f5es do Vigia",
+      "Atribui\u00e7\u00f5es do Supervisor de Entrada",
+      "Plano de Emerg\u00eancia e Salvamento",
+      "No\u00e7\u00f5es de Primeiros Socorros",
+    ],
+  },
   nr35: {
     title: "NR 35 - Trabalho em Altura",
     hours: "8 horas",
@@ -898,13 +947,67 @@ function preserveCanvasContent(source, clone) {
   });
 }
 
-function filenameSuffix() {
-  return currentCourse()
+function slugifyFilename(value, fallback = "arquivo") {
+  const slug = String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/(^-|-$)/g, "")
-    .toLowerCase();
+    .toLowerCase()
+    .slice(0, 90)
+    .replace(/-$/g, "");
+
+  return slug || fallback;
+}
+
+function courseFilenameLabel() {
+  const course = currentCourse();
+  const match = course.match(/^(NR\s*\d+)\s*-\s*(.+)$/i);
+
+  if (!match) return course;
+
+  return `${match[1]} ${match[2]}`;
+}
+
+function studentFilenameLabel() {
+  return plainValue(fields.studentName.value) || "Aluno";
+}
+
+function courseStudentFilename(prefix, extension = "pdf", extra = "") {
+  const parts = [
+    prefix,
+    slugifyFilename(courseFilenameLabel(), "curso"),
+    slugifyFilename(studentFilenameLabel(), "aluno"),
+    extra,
+  ].filter(Boolean);
+
+  return `${parts.join("-")}.${extension}`;
+}
+
+function certificateFilename(extension = "pdf", extra = "") {
+  return courseStudentFilename("certificado", extension, extra);
+}
+
+function collectionFilename() {
+  return courseStudentFilename("coleta", "pdf");
+}
+
+function savePdfFile(pdf, filename) {
+  if (typeof pdf.save === "function") {
+    pdf.save(filename);
+    return;
+  }
+
+  const pdfBlob = pdf.output("blob");
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement("a");
+
+  link.href = pdfUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 }
 
 function programLines() {
@@ -997,18 +1100,15 @@ function drawCollectionRow(pdf, label, value, x, y, width) {
 }
 
 async function downloadCollectionPdf() {
-  const pdfWindow = window.open("", "_blank");
   await updatePreview();
   const exportBlocker = focusFirstExportBlocker();
 
   if (exportBlocker) {
-    if (pdfWindow) pdfWindow.close();
     alert(exportBlocker);
     return;
   }
 
   if (!window.jspdf) {
-    if (pdfWindow) pdfWindow.close();
     alert("A biblioteca de PDF ainda não carregou. Recarregue a página e tente novamente.");
     return;
   }
@@ -1083,19 +1183,7 @@ async function downloadCollectionPdf() {
     creator: developerCredit,
   });
 
-  const pdfBlob = pdf.output("blob");
-  const pdfUrl = URL.createObjectURL(pdfBlob);
-
-  if (pdfWindow) {
-    pdfWindow.location.href = pdfUrl;
-  } else {
-    const link = document.createElement("a");
-    link.href = pdfUrl;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.download = `coleta-vs-cursos-${filenameSuffix()}.pdf`;
-    link.click();
-  }
+  savePdfFile(pdf, collectionFilename());
 }
 
 async function downloadImage(pageId, name) {
@@ -1114,22 +1202,21 @@ async function downloadImage(pageId, name) {
   const element = document.getElementById(pageId);
   const canvas = await renderPage(element);
   const link = document.createElement("a");
-  link.download = `certificado-vs-cursos-${filenameSuffix()}-${name}.png`;
+  link.download = certificateFilename("png", name);
   link.href = canvas.toDataURL("image/png");
+  document.body.appendChild(link);
   link.click();
+  link.remove();
 }
 
 async function downloadPdf() {
-  const pdfWindow = window.open("", "_blank");
   await updatePreview();
   const exportBlocker = focusFirstExportBlocker();
   if (exportBlocker) {
-    if (pdfWindow) pdfWindow.close();
     alert(exportBlocker);
     return;
   }
   if (!window.html2canvas || !window.jspdf) {
-    if (pdfWindow) pdfWindow.close();
     alert("As bibliotecas de PDF/imagem ainda não carregaram. Recarregue a página e tente novamente.");
     return;
   }
@@ -1144,18 +1231,7 @@ async function downloadPdf() {
   pdf.addPage("a4", "landscape");
   pdf.addImage(backCanvas.toDataURL("image/png"), "PNG", 0, 0, 297, 210);
 
-  const pdfBlob = pdf.output("blob");
-  const pdfUrl = URL.createObjectURL(pdfBlob);
-
-  if (pdfWindow) {
-    pdfWindow.location.href = pdfUrl;
-  } else {
-    const link = document.createElement("a");
-    link.href = pdfUrl;
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.click();
-  }
+  savePdfFile(pdf, certificateFilename("pdf"));
 }
 
 document.getElementById("downloadPdf").addEventListener("click", downloadPdf);
