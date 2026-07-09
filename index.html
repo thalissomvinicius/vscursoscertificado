@@ -28,12 +28,16 @@
               <span class="tagline">Valorização Profissional</span>
             </div>
             <p>CNPJ: 60.953.721/0001-48</p>
+            <div id="appStatus" class="app-status is-pending">
+              <strong id="appStatusTitle">Preenchimento pendente</strong>
+              <span id="appStatusDetail">Informe um CPF válido para liberar a exportação.</span>
+            </div>
           </div>
 
           <form id="certificateForm" class="form-grid">
             <label>
               Nome do aluno
-              <input id="studentName" type="text" value="Nome completo do aluno" />
+              <input id="studentName" type="text" placeholder="Nome completo do aluno" />
             </label>
 
             <label>
@@ -87,6 +91,7 @@
                 <input id="endDate" type="date" />
               </label>
             </div>
+            <small id="dateStatus" class="field-status">Confira as datas informadas.</small>
 
             <label>
               Assinaturas no certificado
@@ -162,7 +167,9 @@
             </label>
 
             <div class="actions">
+              <small id="exportStatus" class="export-status">Preencha os dados obrigatórios para exportar.</small>
               <button type="button" id="downloadPdf">Abrir PDF</button>
+              <button type="button" id="downloadDataPdf">PDF dos dados</button>
               <button type="button" id="downloadFront">Imagem frente</button>
               <button type="button" id="downloadBack">Imagem verso</button>
               <button type="button" id="logoutButton" class="secondary-action">Sair</button>
@@ -210,6 +217,7 @@
               <span>VS Cursos</span>
               <small>Certificado validado</small>
             </div>
+            <small class="certificate-dev-credit">Desenvolvido por Vinicius Dev</small>
 
             <footer id="signatureRow" class="signature-row">
               <div id="instructorSignatureBlock" class="signature">
@@ -272,10 +280,12 @@
               <span>VS CURSOS - CNPJ 60.953.721/0001-48</span>
               <span>Certificado emitido conforme informações preenchidas pela empresa.</span>
             </footer>
+            <small class="certificate-dev-credit">Desenvolvido por Vinicius Dev</small>
           </article>
           </div>
         </section>
       </section>
     </main>
+    <footer class="developer-credit">Desenvolvido por Vinicius Dev</footer>
   </body>
 </html>

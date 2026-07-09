@@ -37,6 +37,11 @@ const output = {
   frontPeriodLead: document.getElementById("frontPeriodLead"),
   frontPeriod: document.getElementById("frontPeriod"),
   cpfStatus: document.getElementById("cpfStatus"),
+  dateStatus: document.getElementById("dateStatus"),
+  appStatus: document.getElementById("appStatus"),
+  appStatusTitle: document.getElementById("appStatusTitle"),
+  appStatusDetail: document.getElementById("appStatusDetail"),
+  exportStatus: document.getElementById("exportStatus"),
   backProgram: document.getElementById("backProgram"),
   verificationCode: document.getElementById("verificationCode"),
   qrCode: document.getElementById("qrCode"),
@@ -61,10 +66,19 @@ const output = {
   studentSignatureYValue: document.getElementById("studentSignatureYValue"),
 };
 
+const downloadButtons = [
+  document.getElementById("downloadPdf"),
+  document.getElementById("downloadDataPdf"),
+  document.getElementById("downloadFront"),
+  document.getElementById("downloadBack"),
+];
+
 const certificateSize = {
   width: 1122,
   height: 794,
 };
+
+const developerCredit = "Desenvolvido por Vinicius Dev";
 
 const today = new Date();
 fields.completionDate.valueAsDate = today;
@@ -225,6 +239,89 @@ function updateDateFields() {
   document.getElementById("periodDateWrap").classList.toggle("hidden", !isRange);
 }
 
+function dateState() {
+  if (fields.dateMode.value !== "range") {
+    return fields.completionDate.value
+      ? { valid: true, message: "Data informada." }
+      : { valid: false, message: "Informe a data de conclusão." };
+  }
+
+  if (!fields.startDate.value || !fields.endDate.value) {
+    return { valid: false, message: "Informe a data de início e término." };
+  }
+
+  if (fields.startDate.value > fields.endDate.value) {
+    return { valid: false, message: "A data de início não pode ser depois da data de término." };
+  }
+
+  return { valid: true, message: "Período informado." };
+}
+
+function updateDateStatus() {
+  const state = dateState();
+  const hasProblem = !state.valid;
+
+  output.dateStatus.classList.toggle("is-valid", state.valid);
+  output.dateStatus.classList.toggle("is-invalid", hasProblem);
+  output.dateStatus.textContent = state.message;
+
+  [fields.completionDate, fields.startDate, fields.endDate].forEach((field) => {
+    field.classList.toggle("is-invalid", hasProblem);
+    field.classList.toggle("is-valid", state.valid);
+  });
+
+  return state;
+}
+
+function updateCertificateStatus(cpfInfo, dateInfo) {
+  const blockers = [];
+
+  if (!cpfInfo.valid) {
+    blockers.push(cpfInfo.complete ? "CPF inválido" : "CPF pendente");
+  }
+
+  if (!dateInfo.valid) {
+    blockers.push("datas inválidas");
+  }
+
+  const ready = blockers.length === 0;
+  downloadButtons.forEach((button) => {
+    button.disabled = !ready;
+    button.setAttribute("aria-disabled", String(!ready));
+  });
+
+  output.appStatus.classList.toggle("is-ready", ready);
+  output.appStatus.classList.toggle("is-warning", !ready);
+  output.appStatus.classList.toggle("is-pending", !ready);
+  output.appStatusTitle.textContent = ready ? "Certificado pronto" : "Preenchimento pendente";
+  output.appStatusDetail.textContent = ready
+    ? "Dados validados. PDF e imagens liberados."
+    : `Bloqueio: ${blockers.join(" e ")}.`;
+  output.exportStatus.textContent = ready
+    ? "Certificado pronto para exportação."
+    : "Complete os dados obrigatórios para exportar.";
+
+  return ready;
+}
+
+function focusFirstExportBlocker() {
+  const cpfInfo = cpfState();
+  const currentDateState = dateState();
+
+  if (!cpfInfo.valid) {
+    fields.studentDoc.focus();
+    return "Informe um CPF válido antes de exportar o certificado.";
+  }
+
+  if (!currentDateState.valid) {
+    const target = fields.dateMode.value === "range" ? fields.startDate : fields.completionDate;
+    target.focus();
+    return currentDateState.message;
+  }
+
+  return "";
+}
+
 function signatureParts(kind) {
   if (kind === "instructor") {
     return {
@@ -276,6 +373,12 @@ function selectSignature(kind) {
   activeSignatureKind = kind;
   output.instructorSignatureBox.classList.toggle("is-selected", kind === "instructor");
   output.studentSignatureBox.classList.toggle("is-selected", kind === "student");
+}
+
+function clearSignatureSelection() {
+  activeSignatureKind = "";
+  output.instructorSignatureBox.classList.remove("is-selected", "is-dragging");
+  output.studentSignatureBox.classList.remove("is-selected", "is-dragging");
 }
 
 function syncSignatureControls(kind) {
@@ -689,7 +792,9 @@ function updatePreview() {
 
   document.getElementById("customCourseWrap").classList.toggle("hidden", fields.courseSelect.value !== "custom");
   updateDateFields();
+  const currentDateState = updateDateStatus();
   updateSignaturePreview();
+  updateCertificateStatus(cpfInfo, currentDateState);
 
   output.frontStudent.textContent = studentName;
   output.frontCpfText.textContent = studentDoc;
@@ -704,8 +809,8 @@ function updatePreview() {
 }
 
 async function renderPage(element) {
-  const exportWidth = Math.round(element.offsetWidth || certificateSize.width);
-  const exportHeight = Math.round(element.offsetHeight || certificateSize.height);
+  const exportWidth = certificateSize.width;
+  const exportHeight = certificateSize.height;
   const sandbox = document.createElement("div");
   const clone = element.cloneNode(true);
 
@@ -713,20 +818,27 @@ async function renderPage(element) {
   sandbox.style.width = `${exportWidth}px`;
   sandbox.style.height = `${exportHeight}px`;
   clone.classList.add("exporting");
-  clone.style.width = `${exportWidth}px`;
-  clone.style.height = `${exportHeight}px`;
+  clone.style.setProperty("width", `${exportWidth}px`, "important");
+  clone.style.setProperty("min-width", `${exportWidth}px`, "important");
+  clone.style.setProperty("height", `${exportHeight}px`, "important");
+  clone.style.setProperty("transform", "none", "important");
   sandbox.appendChild(clone);
   document.body.appendChild(sandbox);
+  preserveCanvasContent(element, clone);
 
   if (document.fonts?.ready) {
     await document.fonts.ready;
   }
+  await waitForImages(clone);
+  await nextFrame();
 
   try {
     return await html2canvas(clone, {
       backgroundColor: "#ffffff",
-      scale: 3,
+      scale: 2,
       useCORS: true,
+      imageTimeout: 0,
+      logging: false,
       width: exportWidth,
       height: exportHeight,
       windowWidth: exportWidth,
@@ -739,6 +851,53 @@ async function renderPage(element) {
   }
 }
 
+function nextFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+function waitForImage(image) {
+  if (!image?.src || image.complete) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const done = () => {
+      image.removeEventListener("load", done);
+      image.removeEventListener("error", done);
+      resolve();
+    };
+
+    image.addEventListener("load", done, { once: true });
+    image.addEventListener("error", done, { once: true });
+  });
+}
+
+function waitForImages(container) {
+  return Promise.all(Array.from(container.querySelectorAll("img")).map(waitForImage));
+}
+
+function preserveCanvasContent(source, clone) {
+  const sourceCanvases = Array.from(source.querySelectorAll("canvas"));
+  const cloneCanvases = Array.from(clone.querySelectorAll("canvas"));
+
+  sourceCanvases.forEach((sourceCanvas, index) => {
+    const cloneCanvas = cloneCanvases[index];
+    if (!cloneCanvas) return;
+
+    try {
+      const image = document.createElement("img");
+      image.src = sourceCanvas.toDataURL("image/png");
+      image.width = sourceCanvas.width;
+      image.height = sourceCanvas.height;
+      image.className = cloneCanvas.className;
+      image.alt = cloneCanvas.getAttribute("aria-label") || "";
+      cloneCanvas.replaceWith(image);
+    } catch (error) {
+      // If a browser blocks canvas serialization, html2canvas can still try the original clone.
+    }
+  });
+}
+
 function filenameSuffix() {
   return currentCourse()
     .normalize("NFD")
@@ -748,17 +907,210 @@ function filenameSuffix() {
     .toLowerCase();
 }
 
+function programLines() {
+  return fields.programContent.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function currentSignatureLabel() {
+  const labels = {
+    both: "Instrutor e aluno",
+    instructor: "Somente instrutor",
+    student: "Somente aluno",
+  };
+  return labels[fields.signatureMode.value] || "Instrutor e aluno";
+}
+
+function collectionData() {
+  const dateInfo = currentDateInfo();
+  return {
+    studentName: plainValue(fields.studentName.value) || "Nome completo do aluno",
+    studentDoc: plainValue(fields.studentDoc.value) || "-",
+    course: plainValue(currentCourse()),
+    hours: plainValue(fields.courseHours.value) || "-",
+    periodLabel: dateInfo.lead,
+    period: dateInfo.value,
+    instructor: companyInstructor.name,
+    instructorRole: companyInstructor.role,
+    signatures: currentSignatureLabel(),
+    verificationCode: output.verificationCode.textContent || "VS-000000",
+    issueDate: new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date()),
+    program: programLines(),
+  };
+}
+
+function addCollectionPdfFooter(pdf) {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  pdf.setDrawColor(184, 138, 53);
+  pdf.setLineWidth(0.2);
+  pdf.line(18, pageHeight - 15, pageWidth - 18, pageHeight - 15);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("VS Cursos - CNPJ 60.953.721/0001-48", 18, pageHeight - 9);
+  pdf.text(developerCredit, pageWidth - 18, pageHeight - 9, { align: "right" });
+}
+
+function addCollectionPdfHeader(pdf, title = "Resumo da coleta") {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+
+  pdf.setFillColor(23, 35, 61);
+  pdf.rect(0, 0, pageWidth, 30, "F");
+  pdf.setFillColor(184, 138, 53);
+  pdf.rect(0, 30, pageWidth, 2, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(18);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text("VS CURSOS", 18, 15);
+  pdf.setFontSize(9);
+  pdf.setTextColor(221, 192, 121);
+  pdf.text("Valorização Profissional", 18, 22);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(title.toUpperCase(), pageWidth - 18, 17, { align: "right" });
+}
+
+function drawCollectionRow(pdf, label, value, x, y, width) {
+  const wrapped = pdf.splitTextToSize(String(value || "-"), width - 42);
+  const rowHeight = Math.max(11, wrapped.length * 5 + 5);
+
+  pdf.setFillColor(248, 250, 252);
+  pdf.roundedRect(x, y, width, rowHeight, 2, 2, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8);
+  pdf.setTextColor(143, 103, 37);
+  pdf.text(label.toUpperCase(), x + 4, y + 7);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.setTextColor(31, 41, 55);
+  pdf.text(wrapped, x + 42, y + 7);
+
+  return rowHeight + 3;
+}
+
+async function downloadCollectionPdf() {
+  const pdfWindow = window.open("", "_blank");
+  await updatePreview();
+  const exportBlocker = focusFirstExportBlocker();
+
+  if (exportBlocker) {
+    if (pdfWindow) pdfWindow.close();
+    alert(exportBlocker);
+    return;
+  }
+
+  if (!window.jspdf) {
+    if (pdfWindow) pdfWindow.close();
+    alert("A biblioteca de PDF ainda não carregou. Recarregue a página e tente novamente.");
+    return;
+  }
+
+  const data = collectionData();
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 18;
+  let y = 44;
+
+  const ensureSpace = (height) => {
+    if (y + height <= pageHeight - 24) return;
+    addCollectionPdfFooter(pdf);
+    pdf.addPage();
+    addCollectionPdfHeader(pdf, "Resumo da coleta");
+    y = 44;
+  };
+
+  const sectionTitle = (title) => {
+    ensureSpace(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.setTextColor(23, 35, 61);
+    pdf.text(title.toUpperCase(), margin, y);
+    pdf.setDrawColor(184, 138, 53);
+    pdf.line(margin, y + 2, pageWidth - margin, y + 2);
+    y += 8;
+  };
+
+  const row = (label, value) => {
+    ensureSpace(18);
+    y += drawCollectionRow(pdf, label, value, margin, y, pageWidth - margin * 2);
+  };
+
+  addCollectionPdfHeader(pdf, "Resumo da coleta");
+
+  sectionTitle("Dados principais");
+  row("Aluno", data.studentName);
+  row("CPF / Documento", data.studentDoc);
+  row("Curso", data.course);
+  row("Carga horária", data.hours);
+  row("Data / período", `${data.periodLabel} ${data.period}`);
+
+  sectionTitle("Validação e assinaturas");
+  row("Código de verificação", data.verificationCode);
+  row("Instrutor", data.instructor);
+  row("Registro", data.instructorRole);
+  row("Assinaturas configuradas", data.signatures);
+  row("Gerado em", data.issueDate);
+
+  sectionTitle("Conteúdo programático");
+  const lines = data.program.length ? data.program : ["Conteúdo programático não informado."];
+  lines.forEach((line, index) => {
+    const text = `${String(index + 1).padStart(2, "0")}. ${line}`;
+    const wrapped = pdf.splitTextToSize(text, pageWidth - margin * 2 - 6);
+    const itemHeight = wrapped.length * 5 + 4;
+    ensureSpace(itemHeight + 2);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9.5);
+    pdf.setTextColor(47, 59, 82);
+    pdf.text(wrapped, margin + 3, y);
+    y += itemHeight;
+  });
+
+  addCollectionPdfFooter(pdf);
+  pdf.setProperties({
+    title: `Coleta - ${data.studentName}`,
+    subject: "Resumo dos dados coletados para certificado VS Cursos",
+    author: "VS Cursos",
+    creator: developerCredit,
+  });
+
+  const pdfBlob = pdf.output("blob");
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+
+  if (pdfWindow) {
+    pdfWindow.location.href = pdfUrl;
+  } else {
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.download = `coleta-vs-cursos-${filenameSuffix()}.pdf`;
+    link.click();
+  }
+}
+
 async function downloadImage(pageId, name) {
   await updatePreview();
-  if (!cpfState().valid) {
-    alert("Informe um CPF válido antes de exportar o certificado.");
-    fields.studentDoc.focus();
+  const exportBlocker = focusFirstExportBlocker();
+  if (exportBlocker) {
+    alert(exportBlocker);
     return;
   }
   if (!window.html2canvas) {
     alert("A biblioteca de imagem ainda não carregou. Recarregue a página e tente novamente.");
     return;
   }
+  clearSignatureSelection();
+  await nextFrame();
   const element = document.getElementById(pageId);
   const canvas = await renderPage(element);
   const link = document.createElement("a");
@@ -770,10 +1122,10 @@ async function downloadImage(pageId, name) {
 async function downloadPdf() {
   const pdfWindow = window.open("", "_blank");
   await updatePreview();
-  if (!cpfState().valid) {
+  const exportBlocker = focusFirstExportBlocker();
+  if (exportBlocker) {
     if (pdfWindow) pdfWindow.close();
-    alert("Informe um CPF válido antes de exportar o certificado.");
-    fields.studentDoc.focus();
+    alert(exportBlocker);
     return;
   }
   if (!window.html2canvas || !window.jspdf) {
@@ -781,6 +1133,8 @@ async function downloadPdf() {
     alert("As bibliotecas de PDF/imagem ainda não carregaram. Recarregue a página e tente novamente.");
     return;
   }
+  clearSignatureSelection();
+  await nextFrame();
   const { jsPDF } = window.jspdf;
   const frontCanvas = await renderPage(document.getElementById("frontPage"));
   const backCanvas = await renderPage(document.getElementById("backPage"));
@@ -805,6 +1159,7 @@ async function downloadPdf() {
 }
 
 document.getElementById("downloadPdf").addEventListener("click", downloadPdf);
+document.getElementById("downloadDataPdf").addEventListener("click", downloadCollectionPdf);
 document.getElementById("downloadFront").addEventListener("click", () => downloadImage("frontPage", "frente"));
 document.getElementById("downloadBack").addEventListener("click", () => downloadImage("backPage", "verso"));
 document.getElementById("logoutButton").addEventListener("click", () => {
