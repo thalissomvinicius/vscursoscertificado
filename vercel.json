@@ -10,5 +10,5 @@
       "excludeFiles": "{.data/**,tests/**,test-results/**,orcamento-*,README.md,AGENTS.md}"
     }
   },
-  "rewrites": [{"source":"/(.*)","destination":"/api/index"}]
+  "routes": [{"src":"/(.*)","dest":"/api/index.js"}]
 }
