@@ -43,6 +43,8 @@ O PDF foi aberto e rasterizado com PDF.js para comparação com os canvases de e
 
 O certificado usado no teste ficou próximo de **0,75 MB**. A reimpressão foi comparada byte a byte e retornou o mesmo PDF. O teste de emissão em lote confirmou dois PDFs dentro do ZIP. Todos os dados e a imagem de assinatura dos testes são fictícios; o banco de teste é temporário e separado da instalação real.
 
+Na Vercel, o teste hospedado confirmou upload dividido e download idêntico de um PDF de **6.295.035 bytes**, exportação JSON de **25.236.955 bytes**, restauração sem duplicar registros e backup portátil SQLite de **19.030.016 bytes**. A consulta de autenticidade respondeu corretamente e arquivos internos retornaram 404. Dados fictícios ficaram exclusivamente no esquema de preview.
+
 ## Revisão visual: azul e branco
 
 A interface usa azul `#155eef`, branco e cinzas neutros, com navegação lateral no computador, indicadores legíveis, filtros e ações consistentes. Login, painel, editor, configurações e verificação seguem a mesma identidade. Os novos certificados e relatórios PDF também usam essa paleta; PDFs anteriormente emitidos permanecem inalterados.
