@@ -26,9 +26,9 @@
 
 ## Evidências
 
-**15 testes automatizados de servidor passaram.** A suíte verifica CPF, datas, carga horária, bloqueio de acesso, CSRF, configuração do administrador, identidade da marca, controle de revisão, consulta por QR, preservação de PDF, emissão concorrente, cancelamento, permissões, lote atômico, backup, troca de senha e persistência após reinício.
+**17 testes automatizados de servidor passaram em SQLite e PostgreSQL.** A suíte verifica CPF, datas, carga horária, bloqueio de acesso, CSRF, configuração do administrador, identidade da marca, controle de revisão, consulta por QR, preservação de PDF, emissão concorrente, cancelamento, permissões, lote atômico, backup, troca de senha e persistência após reinício. Inclui envio dividido com integridade SHA-256 e disputa de revisão entre dois servidores.
 
-Cobertura medida somente em `core.js` e `server.js`: **96,20% de linhas**, **70,71% de ramos** e **92% de funções**. A cobertura não representa a totalidade da interface ou uma garantia de ausência de defeitos.
+Na versão local anterior à adaptação PostgreSQL, a cobertura medida somente em `core.js` e `server.js` foi **96,20% de linhas**, **70,71% de ramos** e **92% de funções**. Esses percentuais não foram recalculados para os novos módulos e não representam a totalidade da interface ou uma garantia de ausência de defeitos.
 
 O teste Playwright em Chrome percorreu o primeiro acesso, emissão, seleção da NR 33, período, upload, arraste e redimensionamento da assinatura, gravação automática, recarga, emissão, reimpressão, consulta sem login, busca, relatório, configuração, backup, importação de turma, emissão em lote e ZIP. **Nenhum erro JavaScript** ocorreu nesse percurso.
 
@@ -51,12 +51,12 @@ Referências de organização, estados e cor: [Atlassian Design](https://atlassi
 
 O teste de navegador verifica também a cor da ação principal, a largura da navegação lateral, o encaixe da prévia sem zoom e a lista móvel sem rolagem horizontal.
 
-`npm run check` passou. `npm audit --offline` retornou zero ocorrências para o pacote local, que não tem dependências npm de produção. **Esse comando não audita as bibliotecas de navegador vendorizadas**; não deve ser entendido como auditoria completa dessas bibliotecas.
+`npm run check` passou. `npm audit --omit=dev` retornou zero vulnerabilidades nas dependências npm de produção, incluindo `pg`. **Esse comando não audita as bibliotecas de navegador vendorizadas**; não deve ser entendido como auditoria completa dessas bibliotecas. O Security Advisor do projeto Supabase não retornou alertas após a criação dos esquemas privados e das políticas RLS.
 
 ## Limites da entrega
 
 - A instalação local está preparada para primeiro acesso, sem senha de administrador escolhida pelo agente.
-- A consulta do QR em outro computador/celular requer hospedagem do servidor e banco, HTTPS e URL pública configurada antes da emissão. Não houve publicação em nuvem nesta entrega.
+- A versão online usa Vercel e Supabase, com banco persistente, TLS verificado, segredo restrito ao servidor, sessões seguras e área separada para testes. A URL pública da empresa aponta para o domínio de produção.
 - A versão antiga não guardava certificados. Não há histórico anterior para migrar automaticamente.
 - Cópias automáticas no mesmo disco não protegem contra perda do computador. Há download de backups para cópia externa.
 - A recuperação de senha pelo terminal teve verificação de sintaxe; o diálogo interativo não faz parte da automação Playwright.
