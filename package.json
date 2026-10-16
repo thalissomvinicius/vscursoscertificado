@@ -1,0 +1,12 @@
+{
+  "name": "vs-cursos-certificados",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Gestao local de certificados VS Cursos",
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check core.js && node --check server.js && node --check manage.js && node --check script.js && node --check ui.js && node --check editor.js && node --check dashboard.js && node --check settings.js && node --check login.js && node --check verify.js"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+.data/
+test-results/
+.env
+*.log
+*.sqlite*
+orcamento-*.html
+orcamento-*.pdf

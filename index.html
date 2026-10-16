@@ -3,31 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>VS Cursos - Gerador de Certificados</title>
+    <title>Emitir certificado | VS Cursos</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=20260709-2" />
-    <script>
-      if (sessionStorage.getItem("vsCursosAuth") !== "ok") {
-        window.location.replace("login.html");
-      }
-    </script>
+    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="workspace.css?v=2" />
+    <script defer src="lucide.min.js"></script>
+    <script defer src="ui.js"></script>
     <script defer src="html2canvas.min.js"></script>
     <script defer src="jspdf.umd.min.js"></script>
     <script defer src="qrcode.min.js"></script>
-    <script defer src="script.js?v=20260709-2"></script>
+    <script defer src="script.js?v=2"></script>
+    <script defer src="editor.js?v=2"></script>
   </head>
   <body>
-    <main class="app-shell">
+    <header id="appHeader" class="app-header"></header>
+    <main class="app-shell editor-shell">
+      <div class="page-heading editor-heading"><div><span class="section-kicker">EMISSÃO</span><h2 id="editorTitle">Novo certificado</h2></div><div class="heading-actions"><span id="saveStatus" class="save-status" role="status">Carregando…</span><button class="button secondary" type="button" id="newCertificate"><i data-lucide="plus"></i>Novo</button><button class="button primary" type="button" id="saveDraft" disabled><i data-lucide="save"></i>Salvar rascunho</button></div></div>
+      <div id="recordNotice" class="record-notice hidden" role="status"></div>
       <section class="workspace">
         <aside class="panel">
           <div class="brand-card">
-            <div class="vs-logo" aria-label="VS Cursos">
-              <span class="vs">VS</span>
-              <span class="courses">CURSOS</span>
-              <span class="rule"></span>
-              <span class="tagline">Valorização Profissional</span>
-            </div>
-            <p>CNPJ: 60.953.721/0001-48</p>
+            <h3>Dados do certificado</h3>
             <div id="appStatus" class="app-status is-pending">
               <strong id="appStatusTitle">Preenchimento pendente</strong>
               <span id="appStatusDetail">Informe um CPF válido para liberar a exportação.</span>
@@ -35,16 +31,22 @@
           </div>
 
           <form id="certificateForm" class="form-grid">
+          <fieldset id="editorFields" disabled>
+          <details class="form-section" open><summary><span>01</span> Aluno e empresa</summary><div class="section-fields">
             <label>
               Nome do aluno
-              <input id="studentName" type="text" placeholder="Nome completo do aluno" />
+              <input id="studentName" type="text" maxlength="160" autocomplete="name" placeholder="Nome completo do aluno" />
             </label>
 
             <label>
-              CPF / documento
+              CPF
               <input id="studentDoc" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" />
               <small id="cpfStatus" class="field-status">Digite um CPF válido.</small>
             </label>
+
+            <label>Empresa do aluno<input id="studentCompany" type="text" maxlength="160" placeholder="Empresa contratante (opcional)" /></label>
+          </div></details>
+          <details class="form-section" open><summary><span>02</span> Curso e período</summary><div class="section-fields">
 
             <label>
               Curso
@@ -61,8 +63,10 @@
 
             <label id="customCourseWrap" class="hidden">
               Nome do curso
-              <input id="customCourse" type="text" placeholder="Digite o nome do curso" />
+              <input id="customCourse" type="text" maxlength="240" placeholder="Digite o nome do curso" />
             </label>
+
+            <div class="two-col"><label>Tipo de treinamento<select id="trainingType"><option value="initial">Inicial</option><option value="refresher">Reciclagem</option></select></label><label id="nr33RoleWrap" class="hidden">Função na NR 33<select id="nr33Role"><option value="worker">Trabalhador / vigia</option><option value="supervisor">Supervisor de entrada</option></select></label></div>
 
             <label>
               Como informar a data
@@ -75,7 +79,7 @@
             <div class="two-col">
               <label>
                 Carga horária
-                <input id="courseHours" type="text" value="8 horas" />
+                <input id="courseHours" type="text" maxlength="40" value="8 horas" />
               </label>
               <label id="completionDateWrap">
                 Data de conclusão
@@ -94,6 +98,9 @@
               </label>
             </div>
             <small id="dateStatus" class="field-status">Confira as datas informadas.</small>
+          </div></details>
+          <details class="form-section"><summary><span>03</span> Assinaturas e instrutor</summary><div class="section-fields">
+            <label>Nome do instrutor<input id="instructorName" type="text" maxlength="160" /></label><label>Qualificação / registro<input id="instructorRole" type="text" maxlength="160" /></label>
 
             <label>
               Assinaturas no certificado
@@ -107,14 +114,17 @@
             <div class="two-col">
               <label id="instructorSignatureWrap">
                 Imagem da assinatura do instrutor
-                <input id="instructorSignatureUpload" type="file" accept="image/*" />
+                <input id="instructorSignatureUpload" type="file" accept="image/png,image/jpeg,image/webp" />
+                <button type="button" id="removeInstructorSignature" class="text-button"><i data-lucide="image-minus"></i>Remover imagem</button>
               </label>
               <label id="studentSignatureWrap">
                 Imagem da assinatura do aluno
-                <input id="studentSignatureUpload" type="file" accept="image/*" />
+                <input id="studentSignatureUpload" type="file" accept="image/png,image/jpeg,image/webp" />
+                <button type="button" id="removeStudentSignature" class="text-button"><i data-lucide="image-minus"></i>Remover imagem</button>
               </label>
             </div>
-
+          </div></details>
+          <details class="form-section"><summary><span>04</span> Conteúdo programático</summary><div class="section-fields">
             <div class="signature-adjustments">
               <section id="instructorSignatureAdjust" class="signature-adjust-panel hidden">
                 <div class="adjust-heading">
@@ -165,16 +175,16 @@
 
             <label>
               Conteúdo programático
-              <textarea id="programContent" rows="8" placeholder="Digite aqui o conteúdo programático do curso, um tópico por linha."></textarea>
+              <textarea id="programContent" rows="12" maxlength="16000" placeholder="Um tópico por linha"></textarea>
             </label>
+            <button type="button" id="restoreProgram" class="text-button"><i data-lucide="rotate-ccw"></i>Restaurar conteúdo do curso</button>
+          </div></details>
+          </fieldset>
 
             <div class="actions">
               <small id="exportStatus" class="export-status">Preencha os dados obrigatórios para exportar.</small>
-              <button type="button" id="downloadPdf">Baixar PDF</button>
-              <button type="button" id="downloadDataPdf">PDF dos dados</button>
-              <button type="button" id="downloadFront">Imagem frente</button>
-              <button type="button" id="downloadBack">Imagem verso</button>
-              <button type="button" id="logoutButton" class="secondary-action">Sair</button>
+              <button type="button" id="downloadPdf"><i data-lucide="file-check-2"></i><span>Emitir e baixar PDF</span></button>
+              <div class="export-tools"><button type="button" id="downloadDataPdf" title="PDF dos dados" aria-label="PDF dos dados"><i data-lucide="file-text"></i></button><button type="button" id="downloadFront" title="Imagem da frente" aria-label="Imagem da frente"><i data-lucide="image"></i><span>Frente</span></button><button type="button" id="downloadBack" title="Imagem do verso" aria-label="Imagem do verso"><i data-lucide="image"></i><span>Verso</span></button></div>
             </div>
           </form>
         </aside>
@@ -183,11 +193,12 @@
           <div class="preview-toolbar">
             <div>
               <strong>Prévia do certificado</strong>
-              <span>Formato paisagem, frente e verso</span>
+              <span id="previewRecordCode">A4 · Paisagem · Frente e verso</span>
             </div>
+            <div class="preview-controls"><div class="zoom-tools"><button id="zoomOut" type="button" class="icon-button" title="Reduzir prévia" aria-label="Reduzir prévia"><i data-lucide="zoom-out"></i></button><button id="zoomFit" type="button" class="icon-button" title="Ajustar à largura" aria-label="Ajustar à largura"><i data-lucide="scan"></i></button><button id="zoomIn" type="button" class="icon-button" title="Ampliar prévia" aria-label="Ampliar prévia"><i data-lucide="zoom-in"></i></button></div><div class="segmented-control" aria-label="Página do certificado"><button type="button" data-preview-page="front" aria-pressed="true">Frente</button><button type="button" data-preview-page="back" aria-pressed="false">Verso</button></div></div>
           </div>
-
-          <div class="certificate-frame">
+          <div class="preview-stage">
+          <div class="certificate-frame" id="frontFrame">
           <article id="frontPage" class="certificate page-front">
             <header class="cert-header">
               <div class="certificate-logo">
@@ -217,7 +228,7 @@
 
             <div class="cert-seal" aria-hidden="true">
               <span>VS Cursos</span>
-              <small>Certificado validado</small>
+              <small>Registro de conclusão</small>
             </div>
             <small class="certificate-dev-credit">Desenvolvido por Vinicius Dev</small>
 
@@ -231,7 +242,7 @@
                   <span class="signature-handle bottom-right" data-resize-handle="se"></span>
                 </div>
                 <span></span>
-                <strong>Assinatura do Instrutor</strong>
+                <strong id="frontInstructor">Assinatura do Instrutor</strong><small id="frontInstructorRole"></small>
               </div>
               <div id="studentSignatureBlock" class="signature">
                 <div id="studentSignatureBox" class="signature-image-box hidden">
@@ -248,7 +259,7 @@
           </article>
           </div>
 
-          <div class="certificate-frame">
+          <div class="certificate-frame hidden" id="backFrame">
           <article id="backPage" class="certificate page-back">
             <header class="back-header">
               <div>
@@ -272,18 +283,19 @@
             <section class="verification-box">
               <div id="qrCode" class="qr-code" aria-label="QR Code de verificação"></div>
               <div>
-                <strong>Verificação de validade</strong>
+                <strong>Registro de emissão</strong>
                 <span id="verificationCode">VS-000000</span>
-                <small>Aponte a câmera para consultar a autenticidade.</small>
+                <small>Consulte o registro de emissão.</small>
               </div>
             </section>
 
             <footer class="legal">
-              <span>VS CURSOS - CNPJ 60.953.721/0001-48</span>
+              <span id="backIssuer">VS CURSOS - CNPJ 60.953.721/0001-48</span>
               <span>Certificado emitido conforme informações preenchidas pela empresa.</span>
             </footer>
             <small class="certificate-dev-credit">Desenvolvido por Vinicius Dev</small>
           </article>
+          </div>
           </div>
         </section>
       </section>

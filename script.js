@@ -1,4 +1,9 @@
 const fields = {
+  studentCompany: document.getElementById("studentCompany"),
+  instructorName: document.getElementById("instructorName"),
+  instructorRole: document.getElementById("instructorRole"),
+  trainingType: document.getElementById("trainingType"),
+  nr33Role: document.getElementById("nr33Role"),
   studentName: document.getElementById("studentName"),
   studentDoc: document.getElementById("studentDoc"),
   courseSelect: document.getElementById("courseSelect"),
@@ -81,9 +86,12 @@ const certificateSize = {
 const developerCredit = "Desenvolvido por Vinicius Dev";
 
 const today = new Date();
-fields.completionDate.valueAsDate = today;
-fields.startDate.valueAsDate = today;
-fields.endDate.valueAsDate = today;
+const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+fields.completionDate.value = localDate;
+fields.startDate.value = localDate;
+fields.endDate.value = localDate;
+fields.instructorName.value = companyInstructor.name;
+fields.instructorRole.value = companyInstructor.role;
 
 const signatureImages = {
   instructor: "",
@@ -155,7 +163,7 @@ const coursePresets = {
   },
   nr33: {
     title: "NR 33 - Seguran\u00e7a e Sa\u00fade nos Trabalhos em Espa\u00e7os Confinados",
-    hours: "8 horas",
+    hours: "16 horas",
     program: [
       "Introdu\u00e7\u00e3o \u00e0 NR 33",
       "Legisla\u00e7\u00e3o Aplic\u00e1vel a Espa\u00e7os Confinados",
@@ -325,6 +333,13 @@ function updateDateStatus() {
 function updateCertificateStatus(cpfInfo, dateInfo) {
   const blockers = [];
 
+  if (fields.studentName.value.trim().split(/\s+/).length < 2) blockers.push("nome completo pendente");
+  if (fields.courseSelect.value === "custom" && !fields.customCourse.value.trim()) blockers.push("curso pendente");
+  if (!hoursValid()) blockers.push("carga horária inválida");
+  if (!programLines().length || programLines().length > 40 || programLines().some(line => line.length > 240)) blockers.push("conteúdo inválido");
+  if (!fields.instructorName.value.trim() || !fields.instructorRole.value.trim()) blockers.push("instrutor pendente");
+  if (document.querySelector(".program-box.is-overflow")) blockers.push("conteúdo excede o verso");
+
   if (!cpfInfo.valid) {
     blockers.push(cpfInfo.complete ? "CPF inválido" : "CPF pendente");
   }
@@ -333,7 +348,7 @@ function updateCertificateStatus(cpfInfo, dateInfo) {
     blockers.push("datas inválidas");
   }
 
-  const ready = blockers.length === 0;
+  const ready = blockers.length === 0 && Boolean(VS.editor?.initialized) && !VS.editor?.busy;
   downloadButtons.forEach((button) => {
     button.disabled = !ready;
     button.setAttribute("aria-disabled", String(!ready));
@@ -354,6 +369,15 @@ function updateCertificateStatus(cpfInfo, dateInfo) {
 }
 
 function focusFirstExportBlocker() {
+  if (fields.studentName.value.trim().split(/\s+/).length < 2) {
+    fields.studentName.focus();
+    return "Informe o nome completo do aluno.";
+  }
+  if (fields.courseSelect.value === "custom" && !fields.customCourse.value.trim()) return "Informe o nome do curso.";
+  if (!hoursValid()) return "Confira a carga horária do treinamento.";
+  if (!programLines().length || programLines().length > 40 || programLines().some(line => line.length > 240)) return "Use de 1 a 40 tópicos de até 240 caracteres no conteúdo programático.";
+  if (document.querySelector(".program-box.is-overflow")) return "O conteúdo não cabe no verso. Reduza o texto dos tópicos antes de emitir.";
+  if (!fields.instructorName.value.trim() || !fields.instructorRole.value.trim()) return "Informe o instrutor e sua qualificação ou registro.";
   const cpfInfo = cpfState();
   const currentDateState = dateState();
 
@@ -458,12 +482,14 @@ function applySignatureSettings(kind) {
 function resetSignatureSettings(kind) {
   signatureSettings[kind] = { ...defaultSignatureSettings };
   applySignatureSettings(kind);
+  VS.editor?.changed();
 }
 
 function updateSignatureSetting(kind, key, value) {
   signatureSettings[kind][key] = Number(value);
   selectSignature(kind);
   applySignatureSettings(kind);
+  VS.editor?.changed();
 }
 
 function updateSignatureFromDrag(state, event) {
@@ -508,6 +534,7 @@ function setupSignatureDirectEditing(kind) {
 
   box.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
+    if (VS.editor?.busy || (VS.editor?.record && VS.editor.record.status !== "draft")) return;
 
     const handle = event.target?.dataset?.resizeHandle || "";
     selectSignature(kind);
@@ -529,6 +556,7 @@ function setupSignatureDirectEditing(kind) {
   });
 
   box.addEventListener("pointermove", (event) => {
+    if (VS.editor?.busy) return;
     if (!signatureInteraction || signatureInteraction.pointerId !== event.pointerId) return;
     event.preventDefault();
     updateSignatureFromDrag(signatureInteraction, event);
@@ -541,6 +569,7 @@ function setupSignatureDirectEditing(kind) {
       box.releasePointerCapture(event.pointerId);
     }
     signatureInteraction = null;
+    VS.editor?.changed();
   };
 
   box.addEventListener("pointerup", endInteraction);
@@ -580,36 +609,44 @@ function updateSignaturePreview() {
   renderSignatureImage("student");
 }
 
-function readSignatureImage(kind, input) {
+async function readSignatureImage(kind, input) {
   const file = input.files?.[0];
 
   if (!file) {
     signatureImages[kind] = "";
     updateSignaturePreview();
+    VS.editor?.changed();
     return;
   }
 
-  if (!file.type.startsWith("image/")) {
-    alert("Selecione um arquivo de imagem para a assinatura.");
-    input.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    signatureImages[kind] = String(reader.result || "");
+  try {
+    signatureImages[kind] = await VS.image(file);
     resetSignatureSettings(kind);
     updateSignaturePreview();
     selectSignature(kind);
-  });
-  reader.readAsDataURL(file);
+    VS.editor?.changed();
+  } catch (error) { VS.toast(error.message, true); input.value = ""; }
 }
 
 function currentCourse() {
   if (fields.courseSelect.value === "custom") {
     return fields.customCourse.value.trim() || "Curso personalizado";
   }
-  return coursePresets[fields.courseSelect.value]?.title || fields.courseSelect.value;
+  const title = coursePresets[fields.courseSelect.value]?.title || fields.courseSelect.value;
+  if (fields.courseSelect.value === "nr33") return `${title} - ${fields.nr33Role.value === "supervisor" ? "Supervisor de entrada" : "Trabalhador autorizado e vigia"}${fields.trainingType.value === "refresher" ? " - Reciclagem" : ""}`;
+  return `${title}${fields.trainingType.value === "refresher" ? " - Reciclagem" : ""}`;
+}
+
+function recommendedHours() {
+  if (fields.courseSelect.value === "nr33") return fields.trainingType.value === "refresher" ? "8 horas" : fields.nr33Role.value === "supervisor" ? "40 horas" : "16 horas";
+  return coursePresets[fields.courseSelect.value]?.hours || fields.courseHours.value;
+}
+
+function hoursValid() {
+  const hours = Number(fields.courseHours.value.trim().replace(/\s*horas?\s*$/i, "").replace(",", "."));
+  if (!(hours >= 0.5 && hours <= 1000)) return false;
+  if (fields.courseSelect.value === "nr33") return hours >= Number(recommendedHours().split(" ")[0]);
+  return true;
 }
 
 function applyCoursePreset() {
@@ -619,7 +656,7 @@ function applyCoursePreset() {
     return;
   }
 
-  fields.courseHours.value = preset.hours;
+  fields.courseHours.value = recommendedHours();
   fields.programContent.value = preset.program.join("\n");
   updatePreview();
 }
@@ -636,34 +673,52 @@ function fillProgramList(text) {
   }
 
   output.backProgram.innerHTML = lines
-    .slice(0, 20)
     .map((line, index) => {
       const number = String(index + 1).padStart(2, "0");
       return `<li data-number="${number}"><span>${escapeText(line)}</span></li>`;
     })
     .join("");
+  fitProgramContent();
+}
+
+function fitProgramContent() {
+  const box = document.querySelector(".program-box");
+  const frame = document.getElementById("backFrame");
+  const hidden = frame.classList.contains("hidden");
+  if (hidden) frame.classList.remove("hidden");
+  let size = 15;
+  output.backProgram.style.fontSize = `${size}px`;
+  box.classList.remove("is-overflow");
+  while (output.backProgram.offsetHeight > box.clientHeight - 36 && size > 10) {
+    size -= 0.5;
+    output.backProgram.style.fontSize = `${size}px`;
+  }
+  box.classList.toggle("is-overflow", output.backProgram.offsetHeight > box.clientHeight - 36);
+  if (hidden) frame.classList.add("hidden");
 }
 
 function fitStudentName() {
   const element = output.frontStudent;
-  element.style.fontSize = "84px";
+  element.style.fontSize = "70px";
   element.style.whiteSpace = "nowrap";
 
-  let size = 84;
-  while (element.scrollWidth > element.clientWidth && size > 36) {
+  let size = 70;
+  while (element.scrollWidth > element.clientWidth && size > 24) {
     size -= 1;
     element.style.fontSize = `${size}px`;
   }
+  if (element.scrollWidth > element.clientWidth) { element.style.whiteSpace = "normal"; element.style.overflowWrap = "anywhere"; }
 }
 
 function updatePreviewScale() {
   const preview = document.querySelector(".preview-zone");
   if (!preview) return;
 
-  const availableWidth = preview.clientWidth || window.innerWidth;
+  const stage = document.querySelector(".preview-stage");
+  const stageStyle = stage ? getComputedStyle(stage) : null;
+  const availableWidth = stage ? stage.clientWidth - parseFloat(stageStyle.paddingLeft) - parseFloat(stageStyle.paddingRight) : preview.clientWidth || window.innerWidth;
   const fitScale = Math.min(1, availableWidth / certificateSize.width);
-  const readableScale = window.innerWidth <= 680 ? 0.62 : window.innerWidth <= 980 ? 0.66 : 0;
-  const scale = Math.min(1, Math.max(fitScale, readableScale));
+  const scale = Math.min(2, fitScale * (VS.editor?.zoom || 1));
   preview.style.setProperty("--preview-scale", scale.toFixed(3));
 }
 
@@ -671,57 +726,10 @@ function plainValue(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
-function verificationBase(data) {
-  return [
-    "VS CURSOS",
-    "60.953.721/0001-48",
-    data.studentName,
-    data.studentDoc,
-    data.course,
-    data.hours,
-    data.date,
-    data.instructor,
-  ].join("|");
-}
-
-function fallbackHash(text) {
-  let hash = 2166136261;
-  for (let index = 0; index < text.length; index += 1) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Math.abs(hash >>> 0).toString(16).padStart(10, "0").slice(0, 10).toUpperCase();
-}
-
-async function createVerificationCode(data) {
-  const base = verificationBase(data);
-  if (!window.crypto?.subtle) {
-    return `VS-${fallbackHash(base)}`;
-  }
-
-  const bytes = new TextEncoder().encode(base);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(hash))
-    .slice(0, 5)
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .toUpperCase();
-  return `VS-${hex}`;
-}
-
 function verificationUrl(code, data) {
-  const params = new URLSearchParams({
-    codigo: code,
-    aluno: data.studentName,
-    cpf: data.studentDoc,
-    curso: data.course,
-    carga: data.hours,
-    periodo: data.date,
-    conclusao: data.date,
-    instrutor: data.instructor,
-    registro: data.instructorRole,
-  });
-  return `${window.location.origin}${window.location.pathname.replace(/index\.html$/, "")}verify.html?${params}`;
+  const params = new URLSearchParams({ codigo: code });
+  const base = VS.editor?.brand?.publicUrl || window.location.origin;
+  return `${base}/verify.html?${params}`;
 }
 
 function renderQrCode(text) {
@@ -755,20 +763,9 @@ function renderQrCode(text) {
   output.qrCode.appendChild(image);
 }
 
-let verificationRun = 0;
-
 async function updateVerification(data) {
-  const run = ++verificationRun;
-
-  if (!data.cpfValid) {
-    const pendingCode = data.cpfComplete ? "CPF INVÁLIDO" : "AGUARDANDO CPF";
-    output.verificationCode.textContent = pendingCode;
-    renderQrCode(verificationUrl(pendingCode, data));
-    return;
-  }
-
-  const code = await createVerificationCode(data);
-  if (run !== verificationRun) return;
+  const code = VS.editor?.record?.code;
+  if (!code) { output.verificationCode.textContent = "RASCUNHO"; output.qrCode.replaceChildren(); return; }
   output.verificationCode.textContent = code;
   renderQrCode(verificationUrl(code, data));
 }
@@ -833,8 +830,8 @@ function updatePreview() {
     course: plainValue(course),
     hours: plainValue(hours),
     date: dateInfo.value,
-    instructor: companyInstructor.name,
-    instructorRole: companyInstructor.role,
+    instructor: fields.instructorName.value.trim(),
+    instructorRole: fields.instructorRole.value.trim(),
     cpfComplete: cpfInfo.complete,
     cpfValid: cpfInfo.valid,
   };
@@ -843,7 +840,6 @@ function updatePreview() {
   updateDateFields();
   const currentDateState = updateDateStatus();
   updateSignaturePreview();
-  updateCertificateStatus(cpfInfo, currentDateState);
 
   output.frontStudent.textContent = studentName;
   output.frontCpfText.textContent = studentDoc;
@@ -853,6 +849,15 @@ function updatePreview() {
   output.frontPeriod.textContent = dateInfo.value;
   fillProgramList(fields.programContent.value);
   fitStudentName();
+  document.getElementById("frontInstructor").textContent = fields.instructorName.value || "Assinatura do instrutor";
+  document.getElementById("frontInstructorRole").textContent = fields.instructorRole.value;
+  document.getElementById("nr33RoleWrap").classList.toggle("hidden", fields.courseSelect.value !== "nr33");
+  const statement = document.querySelector(".statement");
+  const body = document.querySelector(".cert-body");
+  let fontSize = 25;
+  statement.style.fontSize = `${fontSize}px`;
+  while (body.offsetTop + body.offsetHeight > 530 && fontSize > 17) { fontSize--; statement.style.fontSize = `${fontSize}px`; }
+  updateCertificateStatus(cpfInfo, currentDateState);
   updatePreviewScale();
   return updateVerification(data);
 }
@@ -875,18 +880,15 @@ async function renderPage(element) {
   document.body.appendChild(sandbox);
   preserveCanvasContent(element, clone);
 
-  if (document.fonts?.ready) {
-    await document.fonts.ready;
-  }
-  await waitForImages(clone);
-  await nextFrame();
-
   try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    await waitForImages(clone);
+    await nextFrame();
     return await html2canvas(clone, {
       backgroundColor: "#ffffff",
       scale: 2,
       useCORS: true,
-      imageTimeout: 0,
+      imageTimeout: 10000,
       logging: false,
       width: exportWidth,
       height: exportHeight,
@@ -907,13 +909,15 @@ function nextFrame() {
 }
 
 function waitForImage(image) {
-  if (!image?.src || image.complete) return Promise.resolve();
+  if (!image?.src) return Promise.resolve();
+  if (image.complete) return image.naturalWidth > 0 ? Promise.resolve() : Promise.reject(new Error("Uma imagem do certificado não carregou."));
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => { cleanup(); reject(new Error("Não foi possível carregar uma imagem do certificado.")); }, 10000);
+    const cleanup = () => { clearTimeout(timeout); image.removeEventListener("load", done); image.removeEventListener("error", done); };
     const done = () => {
-      image.removeEventListener("load", done);
-      image.removeEventListener("error", done);
-      resolve();
+      cleanup();
+      if (image.naturalWidth > 0) resolve(); else reject(new Error("Uma imagem do certificado não carregou."));
     };
 
     image.addEventListener("load", done, { once: true });
@@ -1035,8 +1039,8 @@ function collectionData() {
     hours: plainValue(fields.courseHours.value) || "-",
     periodLabel: dateInfo.lead,
     period: dateInfo.value,
-    instructor: companyInstructor.name,
-    instructorRole: companyInstructor.role,
+    instructor: fields.instructorName.value.trim(),
+    instructorRole: fields.instructorRole.value.trim(),
     signatures: currentSignatureLabel(),
     verificationCode: output.verificationCode.textContent || "VS-000000",
     issueDate: new Intl.DateTimeFormat("pt-BR", {
@@ -1048,37 +1052,13 @@ function collectionData() {
 }
 
 function addCollectionPdfFooter(pdf) {
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  pdf.setDrawColor(184, 138, 53);
-  pdf.setLineWidth(0.2);
-  pdf.line(18, pageHeight - 15, pageWidth - 18, pageHeight - 15);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("VS Cursos - CNPJ 60.953.721/0001-48", 18, pageHeight - 9);
-  pdf.text(developerCredit, pageWidth - 18, pageHeight - 9, { align: "right" });
+  const company = VS.editor?.brand || VS.company;
+  VS.pdfFooter(pdf, company, pdf.internal.getNumberOfPages());
 }
 
 function addCollectionPdfHeader(pdf, title = "Resumo da coleta") {
-  const pageWidth = pdf.internal.pageSize.getWidth();
-
-  pdf.setFillColor(23, 35, 61);
-  pdf.rect(0, 0, pageWidth, 30, "F");
-  pdf.setFillColor(184, 138, 53);
-  pdf.rect(0, 30, pageWidth, 2, "F");
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(18);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text("VS CURSOS", 18, 15);
-  pdf.setFontSize(9);
-  pdf.setTextColor(221, 192, 121);
-  pdf.text("Valorização Profissional", 18, 22);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(title.toUpperCase(), pageWidth - 18, 17, { align: "right" });
+  const company = VS.editor?.brand || VS.company;
+  VS.pdfHeader(pdf, company, title);
 }
 
 function drawCollectionRow(pdf, label, value, x, y, width) {
@@ -1089,7 +1069,7 @@ function drawCollectionRow(pdf, label, value, x, y, width) {
   pdf.roundedRect(x, y, width, rowHeight, 2, 2, "F");
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(8);
-  pdf.setTextColor(143, 103, 37);
+  pdf.setTextColor(21, 94, 239);
   pdf.text(label.toUpperCase(), x + 4, y + 7);
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
@@ -1104,12 +1084,12 @@ async function downloadCollectionPdf() {
   const exportBlocker = focusFirstExportBlocker();
 
   if (exportBlocker) {
-    alert(exportBlocker);
+    throw new Error(exportBlocker);
     return;
   }
 
   if (!window.jspdf) {
-    alert("A biblioteca de PDF ainda não carregou. Recarregue a página e tente novamente.");
+    throw new Error("A biblioteca de PDF ainda não carregou. Recarregue a página.");
     return;
   }
 
@@ -1133,15 +1113,16 @@ async function downloadCollectionPdf() {
     ensureSpace(14);
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(11);
-    pdf.setTextColor(23, 35, 61);
+    pdf.setTextColor(21, 94, 239);
     pdf.text(title.toUpperCase(), margin, y);
-    pdf.setDrawColor(184, 138, 53);
+    pdf.setDrawColor(206, 220, 245);
     pdf.line(margin, y + 2, pageWidth - margin, y + 2);
     y += 8;
   };
 
   const row = (label, value) => {
-    ensureSpace(18);
+    const height = Math.max(11, pdf.splitTextToSize(String(value || "-"), pageWidth - margin * 2 - 42).length * 5 + 5) + 3;
+    ensureSpace(height);
     y += drawCollectionRow(pdf, label, value, margin, y, pageWidth - margin * 2);
   };
 
@@ -1149,6 +1130,7 @@ async function downloadCollectionPdf() {
 
   sectionTitle("Dados principais");
   row("Aluno", data.studentName);
+  if (fields.studentCompany.value) row("Empresa", fields.studentCompany.value);
   row("CPF / Documento", data.studentDoc);
   row("Curso", data.course);
   row("Carga horária", data.hours);
@@ -1190,11 +1172,11 @@ async function downloadImage(pageId, name) {
   await updatePreview();
   const exportBlocker = focusFirstExportBlocker();
   if (exportBlocker) {
-    alert(exportBlocker);
+    throw new Error(exportBlocker);
     return;
   }
   if (!window.html2canvas) {
-    alert("A biblioteca de imagem ainda não carregou. Recarregue a página e tente novamente.");
+    throw new Error("A biblioteca de imagem ainda não carregou. Recarregue a página.");
     return;
   }
   clearSignatureSelection();
@@ -1213,11 +1195,11 @@ async function downloadPdf() {
   await updatePreview();
   const exportBlocker = focusFirstExportBlocker();
   if (exportBlocker) {
-    alert(exportBlocker);
+    throw new Error(exportBlocker);
     return;
   }
   if (!window.html2canvas || !window.jspdf) {
-    alert("As bibliotecas de PDF/imagem ainda não carregaram. Recarregue a página e tente novamente.");
+    throw new Error("As bibliotecas de PDF ainda não carregaram. Recarregue a página.");
     return;
   }
   clearSignatureSelection();
@@ -1225,33 +1207,32 @@ async function downloadPdf() {
   const { jsPDF } = window.jspdf;
   const frontCanvas = await renderPage(document.getElementById("frontPage"));
   const backCanvas = await renderPage(document.getElementById("backPage"));
-  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
 
-  pdf.addImage(frontCanvas.toDataURL("image/png"), "PNG", 0, 0, 297, 210);
+  pdf.addImage(frontCanvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 297, 210);
   pdf.addPage("a4", "landscape");
-  pdf.addImage(backCanvas.toDataURL("image/png"), "PNG", 0, 0, 297, 210);
+  pdf.addImage(backCanvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, 297, 210);
 
-  savePdfFile(pdf, certificateFilename("pdf"));
+  pdf.setProperties({ title: `${currentCourse()} - ${fields.studentName.value}`, author: VS.editor?.brand?.name || "VS Cursos", creator: developerCredit, subject: output.verificationCode.textContent });
+  return pdf.output("blob");
 }
 
-document.getElementById("downloadPdf").addEventListener("click", downloadPdf);
-document.getElementById("downloadDataPdf").addEventListener("click", downloadCollectionPdf);
-document.getElementById("downloadFront").addEventListener("click", () => downloadImage("frontPage", "frente"));
-document.getElementById("downloadBack").addEventListener("click", () => downloadImage("backPage", "verso"));
-document.getElementById("logoutButton").addEventListener("click", () => {
-  sessionStorage.removeItem("vsCursosAuth");
-  window.location.replace("login.html");
-});
 
-fields.courseSelect.addEventListener("change", applyCoursePreset);
+fields.courseSelect.addEventListener("change", () => { applyCoursePreset(); VS.editor?.changed(); });
+fields.trainingType.addEventListener("change", () => { fields.courseHours.value = recommendedHours(); updatePreview(); VS.editor?.changed(); });
+fields.nr33Role.addEventListener("change", () => { fields.courseHours.value = recommendedHours(); updatePreview(); VS.editor?.changed(); });
 
 fields.studentDoc.addEventListener("input", () => {
   fields.studentDoc.value = formatCpf(fields.studentDoc.value);
   updatePreview();
+  VS.editor?.changed();
 });
 
 [
   fields.studentName,
+  fields.studentCompany,
+  fields.instructorName,
+  fields.instructorRole,
   fields.customCourse,
   fields.dateMode,
   fields.courseHours,
@@ -1261,8 +1242,8 @@ fields.studentDoc.addEventListener("input", () => {
   fields.signatureMode,
   fields.programContent,
 ].forEach((field) => {
-  field.addEventListener("input", updatePreview);
-  field.addEventListener("change", updatePreview);
+  field.addEventListener("input", () => { updatePreview(); VS.editor?.changed(); });
+  field.addEventListener("change", () => { updatePreview(); VS.editor?.changed(); });
 });
 
 fields.instructorSignatureUpload.addEventListener("change", () => {
