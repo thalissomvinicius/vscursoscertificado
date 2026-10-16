@@ -10,6 +10,7 @@ const {createApplication}=require("../server");
 const {DEFAULT_COMPANY,validateCertificate,cpfValid,validDate,hash}=require("../core");
 
 let app,origin,directory,cookie;
+const read=sql=>app.storage.request(false,()=>app.db.prepare(sql).get());
 const validData=()=>({studentName:"Aluno de Teste",studentDoc:"529.982.247-25",company:"Empresa de Teste",courseKey:"nr35",course:"NR 35 - Trabalho em Altura",customCourse:"",hours:"8 horas",program:"Análise de riscos\nProteção contra quedas\nProcedimentos de resgate",instructor:"Instrutor de Teste",instructorRole:"Técnico de segurança",dateMode:"range",completionDate:"2026-10-03",startDate:"2026-10-01",endDate:"2026-10-03",signatureMode:"instructor",signatureImages:{},signatureSettings:{},brand:DEFAULT_COMPANY});
 async function api(route,{method="GET",body,auth=true,headers={}}={}) {
   const isPdf=Buffer.isBuffer(body);
@@ -23,6 +24,13 @@ async function issue(item){return api(`/api/certificates/${item.id}/pdf`,{method
 
 before(async()=>{
   directory=await fs.mkdtemp(path.join(os.tmpdir(),"vs-cursos-tests-"));app=createApplication({dataDir:directory});
+  if(app.storage.cloud) {
+    assert.equal(process.env.VS_DATABASE_SCHEMA,"vscert_test","Cloud tests require the isolated test schema");
+    await app.storage.request(true,async()=>{
+      for(const table of ["transfer_parts","transfers","sessions","certificates","audit","backups","rate_limits","users","settings"]) await app.db.prepare(`DELETE FROM ${table}`).run();
+      await app.db.prepare("INSERT INTO settings (id,data) VALUES (1,?)").run(JSON.stringify(DEFAULT_COMPANY));
+    });
+  }
   await new Promise(resolve=>app.server.listen(0,"127.0.0.1",resolve));origin=`http://127.0.0.1:${app.server.address().port}`;
 });
 after(async()=>{await app.close();const absolute=path.resolve(directory);assert.ok(absolute.startsWith(path.resolve(os.tmpdir())+path.sep));await fs.rm(absolute,{recursive:true,force:true});});
@@ -42,7 +50,7 @@ test("acesso sem sessão e CSRF são bloqueados; primeiro administrador não usa
   assert.equal((await api("/api/auth/setup",{method:"POST",body:{name:"Admin Teste",username:"admin",password:"curta"}})).status,400);
   const setup=await api("/api/auth/setup",{method:"POST",body:{name:"Admin Teste",username:"admin",password:"senha-longa-de-teste"}});assert.equal(setup.status,201);
   cookie=setup.response.headers.get("set-cookie").split(";")[0];assert.match(setup.response.headers.get("set-cookie"),/HttpOnly/);assert.match(setup.response.headers.get("set-cookie"),/SameSite=Strict/);
-  const account=app.db.prepare("SELECT password FROM users WHERE username='admin'").get();assert.ok(!account.password.includes("senha-longa-de-teste"));
+  const account=await read("SELECT password FROM users WHERE username='admin'");assert.ok(!account.password.includes("senha-longa-de-teste"));
   assert.equal((await api("/api/auth/setup",{method:"POST",body:{name:"Outro",username:"outro",password:"senha-longa-de-teste"}})).status,409);
   assert.equal((await api("/api/auth/login",{method:"POST",body:{username:"admin",password:"errada"}})).status,401);
   assert.equal((await api("/.data/vscursos.sqlite")).status,404);assert.equal((await api("/server.js")).status,404);
@@ -116,9 +124,9 @@ test("operador emite certificados mas não altera empresa, equipe ou backup",asy
 });
 
 test("lote é atômico e rejeita linhas inválidas",async()=>{
-  const count=app.db.prepare("SELECT COUNT(*) n FROM certificates").get().n;
+  const count=(await read("SELECT COUNT(*) n FROM certificates")).n;
   assert.equal((await api("/api/certificates/batch",{method:"POST",body:{items:[validData(),{...validData(),studentDoc:"0"}]}})).status,400);
-  assert.equal(app.db.prepare("SELECT COUNT(*) n FROM certificates").get().n,count);
+  assert.equal((await read("SELECT COUNT(*) n FROM certificates")).n,count);
   const batch=await api("/api/certificates/batch",{method:"POST",body:{items:[validData(),{...validData(),studentName:"Outro Aluno",studentDoc:"168.995.350-09"}]}});assert.equal(batch.status,201);assert.equal(batch.data.items.length,2);
 });
 
@@ -126,10 +134,38 @@ test("backup restaura sem sobrescrever e rejeita PDF adulterado",async()=>{
   const exported=await api("/api/backup");assert.equal(exported.status,200);assert.equal(exported.data.version,2);
   const imported=await api("/api/backup/import",{method:"POST",body:exported.data});assert.equal(imported.status,200,JSON.stringify(imported.data));assert.equal(imported.data.added,0);assert.equal(imported.data.skipped,exported.data.items.length);
   const damaged=structuredClone(exported.data);const item=damaged.items.find(item=>item.pdf);item.pdf=pdfBuffer().toString("base64");item.pdfHash="0".repeat(64);assert.equal((await api("/api/backup/import",{method:"POST",body:damaged})).status,400);
-  const count=app.db.prepare("SELECT COUNT(*) n FROM certificates").get().n;assert.equal(count,exported.data.items.length);
+  const count=(await read("SELECT COUNT(*) n FROM certificates")).n;assert.equal(count,exported.data.items.length);
   const conflicting=structuredClone(exported.data);conflicting.items[0].data.studentName="Pessoa Alterada";assert.equal((await api("/api/backup/import",{method:"POST",body:conflicting})).status,409);
   await app.automaticBackup();const files=await fs.readdir(path.join(directory,"backups"));assert.ok(files.some(name=>name.endsWith(".sqlite")));
   const snapshot=await api("/api/backup/database");assert.equal(snapshot.status,200);assert.equal(snapshot.data.subarray(0,15).toString(),"SQLite format 3");
+});
+
+test("envio dividido valida integridade, partes, permissao e emite o PDF original",async()=>{
+  const item=await draft();const pdf=pdfBuffer();
+  const route=`/api/certificates/${item.id}/pdf`;
+  const created=await api("/api/transfers",{method:"POST",body:{route,method:"PUT",size:pdf.length,type:"application/pdf",hash:hash(pdf),revision:item.revision}});
+  assert.equal(created.status,201,JSON.stringify(created.data));
+  const base=`/api/transfers/${created.data.id}`;
+  assert.equal((await api(`${base}/complete`,{method:"POST",body:{}})).status,409);
+  assert.equal((await api(`${base}/parts/1`,{method:"PUT",body:{data:pdf.toString("base64")}})).status,400);
+  assert.equal((await api(`${base}/parts/0`,{method:"PUT",auth:false,body:{data:pdf.toString("base64")}})).status,401);
+  assert.equal((await api(`${base}/parts/0`,{method:"PUT",body:{data:pdf.toString("base64")}})).status,200);
+  assert.equal((await api(`${base}/complete`,{method:"POST",body:{}})).status,200);
+  assert.deepEqual((await api(route)).data,pdf);
+  assert.equal((await api(`${base}/complete`,{method:"POST",body:{}})).status,404);
+  assert.equal((await api("/api/transfers",{method:"POST",body:{route:"/api/users",method:"POST",size:pdf.length,type:"application/json",hash:hash(pdf)}})).status,403);
+});
+
+test("dois servidores disputam a mesma revisao sem perder atualizacoes",async()=>{
+  const other=createApplication({dataDir:directory});
+  await new Promise(resolve=>other.server.listen(0,"127.0.0.1",resolve));
+  const second=`http://127.0.0.1:${other.server.address().port}`;
+  try {
+    const item=await draft();
+    const requests=[origin,second].map(host=>fetch(`${host}/api/certificates/${item.id}`,{method:"PUT",headers:{Origin:host,"X-VS-Request":"1",Cookie:cookie,"Content-Type":"application/json"},body:JSON.stringify({revision:1,data:validData()})}));
+    const result=await Promise.all(requests);
+    assert.deepEqual(result.map(response=>response.status).sort(),[200,409]);
+  } finally {await other.close();}
 });
 
 test("alterar senha revoga sessões anteriores e mantém a nova sessão",async()=>{
@@ -141,7 +177,7 @@ test("alterar senha revoga sessões anteriores e mantém a nova sessão",async()
 });
 
 test("registros sobrevivem ao reinício e logout invalida a sessão",async()=>{
-  const count=app.db.prepare("SELECT COUNT(*) n FROM certificates").get().n;await app.close();app=createApplication({dataDir:directory});await new Promise(resolve=>app.server.listen(0,"127.0.0.1",resolve));origin=`http://127.0.0.1:${app.server.address().port}`;
-  assert.equal(app.db.prepare("SELECT COUNT(*) n FROM certificates").get().n,count);assert.equal((await api("/api/dashboard")).status,200);
+  const count=(await read("SELECT COUNT(*) n FROM certificates")).n;await app.close();app=createApplication({dataDir:directory});await new Promise(resolve=>app.server.listen(0,"127.0.0.1",resolve));origin=`http://127.0.0.1:${app.server.address().port}`;
+  assert.equal((await read("SELECT COUNT(*) n FROM certificates")).n,count);assert.equal((await api("/api/dashboard")).status,200);
   assert.equal((await api("/api/auth/logout",{method:"POST",body:{}})).status,200);assert.equal((await api("/api/dashboard")).status,401);
 });

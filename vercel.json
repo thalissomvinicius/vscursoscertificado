@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "regions": ["gru1"],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "includeFiles": "{*.html,*.css,*.js,*.svg,cloud/supabase-ca.crt}",
+      "excludeFiles": "{.data/**,tests/**,test-results/**,orcamento-*,README.md,AGENTS.md}"
+    }
+  },
+  "rewrites": [{"source":"/(.*)","destination":"/api/index"}]
+}

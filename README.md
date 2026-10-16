@@ -1,6 +1,6 @@
 # VS Cursos · Certificados
 
-Sistema de emissão e gestão de certificados com banco SQLite local, contas de acesso e histórico dos PDFs originais. Requer **Node.js 24 ou superior**. Não há dependências npm de produção nem necessidade de conexão com a internet para uso local.
+Sistema de emissão e gestão de certificados com contas de acesso e histórico dos PDFs originais. Usa SQLite no computador ou PostgreSQL no Supabase para a publicação na Vercel. Requer **Node.js 24 ou superior**. Instale as dependências com `npm ci`; o uso local não exige conexão com a internet depois da instalação.
 
 ## Iniciar
 
@@ -79,8 +79,20 @@ Variáveis disponíveis:
 | `VS_ALLOWED_HOSTS` | somente loopback | Domínios/IPs permitidos, separados por vírgula, sem protocolo ou porta |
 | `VS_SECURE_COOKIE` | `0` | Defina `1` para acesso por HTTPS atrás de proxy |
 | `VS_TIMEZONE` | `America/Sao_Paulo` | Datas dos indicadores e filtros |
+| `VS_DATABASE_URL` | vazio | Conexão PostgreSQL privada; sem ela, usa SQLite local |
+| `VS_DATABASE_SCHEMA` | `vscertificates` | Área privada do banco; previews usam `vscert_test` |
 
 O proxy deve preservar o cabeçalho Host. O primeiro administrador deve ser configurado pelo acesso local antes de disponibilizar o domínio público. O servidor não confia automaticamente em cabeçalhos de proxy. O banco precisa de volume persistente e backup externo na hospedagem.
+
+### Vercel e Supabase
+
+Na Vercel, `api/index.js` exige o banco online e nunca cria um SQLite temporário como fonte de dados. A conexão usa o Transaction pooler do Supabase, uma credencial restrita ao esquema privado e TLS com validação do certificado. Essa credencial fica apenas nas variáveis sensíveis da hospedagem, nunca no navegador ou no Git.
+
+Produção e preview usam esquemas separados. O usuário já configurado localmente pode ser migrado preservando o hash da senha; a criação pública de administrador permanece bloqueada. Não promova um preview ligado ao banco de testes: faça um novo deployment com as variáveis de produção.
+
+Os PDFs permanecem no PostgreSQL, inclusive depois de um novo deployment. Envios maiores que 3 MB são divididos em partes autenticadas, com conferência SHA-256 antes de salvar. O servidor mantém o limite de 25 MB por PDF e 120 MB por importação. Escritas são transacionais e coordenadas entre instâncias; alterações concorrentes recebem conflito, sem sobrescrever emissões.
+
+O botão de backup completo também funciona online: exporta um SQLite portátil com usuários, configurações, certificados e auditoria, sem sessões ativas. Antes de uma restauração online bem-sucedida, mantém os três snapshots anteriores no banco. O timer de backup diário existe somente no modo local; faça downloads externos regulares. O plano gratuito do Supabase tem limites de armazenamento e pode pausar projetos inativos; acompanhe o painel antes de aumentar o volume de emissões.
 
 ## Cursos e responsabilidade de emissão
 

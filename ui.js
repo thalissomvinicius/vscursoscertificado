@@ -6,8 +6,10 @@ window.VS = {
   async api(url, options = {}) {
     const headers = { "X-VS-Request": "1", ...options.headers };
     if (options.body && !(options.body instanceof Blob)) headers["Content-Type"] = "application/json";
-    const response = await fetch(url, { credentials: "same-origin", ...options, headers,
-      body: options.body && !(options.body instanceof Blob) ? JSON.stringify(options.body) : options.body });
+    const payload=options.body && !(options.body instanceof Blob) ? JSON.stringify(options.body) : options.body;
+    const file=payload ? (payload instanceof Blob ? payload : new Blob([payload],{type:"application/json"})) : null;
+    if(file?.size>3*1024*1024) return this.upload(url,options,headers,file);
+    const response = await fetch(url, { credentials: "same-origin", ...options, headers, body:payload });
     if (!response.ok) {
       let message = "Não foi possível concluir a operação.";
       try { message = (await response.json()).error || message; } catch {}
@@ -16,6 +18,23 @@ window.VS = {
     }
     if (options.blob) return { blob: await response.blob(), filename: response.headers.get("Content-Disposition")?.match(/filename="([^"]+)"/)?.[1] || "arquivo" };
     return response.json();
+  },
+  async upload(url,options,headers,file) {
+    const digest=await crypto.subtle.digest("SHA-256",await file.arrayBuffer());
+    const hash=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
+    const revision=Object.entries(headers).find(([key])=>key.toLowerCase()==="x-vs-revision")?.[1];
+    const type=file.type.split(";")[0] || Object.entries(headers).find(([key])=>key.toLowerCase()==="content-type")?.[1];
+    const upload=await this.api("/api/transfers",{method:"POST",body:{route:url,method:options.method||"POST",size:file.size,type,hash,revision}});
+    try {
+      for(let start=0,part=0;start<file.size;start+=upload.chunkSize,part++) {
+        const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(",")[1]);reader.onerror=()=>reject(new Error("Falha ao ler o arquivo."));reader.readAsDataURL(file.slice(start,start+upload.chunkSize));});
+        await this.api(`/api/transfers/${upload.id}/parts/${part}`,{method:"PUT",body:{data}});
+      }
+      return await this.api(`/api/transfers/${upload.id}/complete`,{method:"POST",body:{}});
+    } catch(error) {
+      await this.api(`/api/transfers/${upload.id}`,{method:"DELETE",body:{}}).catch(()=>{});
+      throw error;
+    }
   },
   async boot(active) {
     try {
